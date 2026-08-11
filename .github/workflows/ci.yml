@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  rls:
+    name: RLS isolation
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: akura
+          POSTGRES_PASSWORD: akura
+          POSTGRES_DB: akura
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U akura -d akura"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://akura:akura@localhost:5432/akura
+      DATABASE_URL_UNPOOLED: postgresql://akura:akura@localhost:5432/akura
+      NEON_AUTH_BASE_URL: https://example.invalid/auth
+      NEON_AUTH_COOKIE_SECRET: ci-test-cookie-secret-at-least-32-chars
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm install
+      - run: npm run db:migrate
+      - run: npm run test:rls

@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Akura
 
-## Getting Started
+Multi-tenant Learning Management System for education institutes. Built by Elgiriya Innovations.
 
-First, run the development server:
+Tenant workspaces live at `/i/{slug}`. Every institute gets every feature; plans differ only by capacity.
+
+## Stack (Phase 1)
+
+- Next.js App Router + TypeScript
+- Neon Postgres + Drizzle ORM
+- `@neondatabase/serverless` WebSocket/pooled driver
+- Neon Auth (Managed Better Auth)
+- Tailwind CSS
+
+## Prerequisites
+
+- Node.js 20+
+- Neon project with Auth enabled
+- Pooled + unpooled connection strings
+
+## Setup
 
 ```bash
+cp .env.example .env
+# Fill DATABASE_URL (pooled), DATABASE_URL_UNPOOLED (migrate), Neon Auth vars
+
+npm install
+npm run db:migrate
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Phase 1 scope
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Foundation only: `tenants`, `memberships`, `audit_log`, `events`, RLS, `withTenant()`, path tenant resolution, `__Host-`-compatible session cookies, cross-tenant isolation tests.
 
-## Learn More
+Later phases add roles UX, settings, billing, attendance, exams, courses, email, and PayHere.
 
-To learn more about Next.js, take a look at the following resources:
+## Tests
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm test
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Requires `DATABASE_URL_UNPOOLED` (or `DATABASE_URL`) pointing at a database with foundation migrations applied. The RLS suite seeds two tenants and asserts Tenant A cannot see Tenant B rows.
 
-## Deploy on Vercel
+## Database roles
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Neon’s `neondb_owner` has `BYPASSRLS`. Migrations create an `akura_app` role **without** `BYPASSRLS`. Every tenant query path calls `SET LOCAL ROLE akura_app` inside `withTenant()` so RLS always applies, even when the connection string uses the owner.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Session cookies must never use a parent `Domain` (e.g. `.elgiriya.com`). Neon Auth is configured with **no `domain`**, `SameSite=Lax`, and the auth route rewrites `Set-Cookie` headers toward `__Host-` names with `Secure`, `HttpOnly`, `Path=/`.
+
+## Docs
+
+- [`AGENTS.md`](AGENTS.md) — product brief and invariants
+- [`docs/AUDIT.md`](docs/AUDIT.md) — Phase 0 audit (pre-Akura codebase)
+- [`docs/superpowers/plans/2026-08-11-akura-phase-1-foundation.md`](docs/superpowers/plans/2026-08-11-akura-phase-1-foundation.md) — Phase 1 checklist
