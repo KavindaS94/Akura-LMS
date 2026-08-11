@@ -1,0 +1,18 @@
+/**
+ * Shared CSV helpers for server exports.
+ */
+export function csvEscape(value: unknown): string {
+  const s = value == null ? "" : String(value);
+  if (/[",\n\r]/.test(s)) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+
+export function toCsv(headers: string[], rows: unknown[][]): string {
+  const lines = [
+    headers.map(csvEscape).join(","),
+    ...rows.map((row) => row.map(csvEscape).join(",")),
+  ];
+  return lines.join("\n") + "\n";
+}

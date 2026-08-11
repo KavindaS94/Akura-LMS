@@ -51,6 +51,11 @@ export default async function AdminDashboardPage({
           </Link>
         </li>
         <li>
+          <Link className="text-accent" href={`/i/${slug}/admin/reports`}>
+            Reports & export
+          </Link>
+        </li>
+        <li>
           <Link className="text-accent" href={`/i/${slug}/admin/settings`}>
             Settings
           </Link>

@@ -13,6 +13,7 @@ const linksFor = (slug: string, role: MembershipRole) => {
       { href: `${base}/admin/applications`, label: "Applications" },
       { href: `${base}/admin/registration-links`, label: "Reg links" },
       { href: `${base}/admin/staff`, label: "Staff" },
+      { href: `${base}/admin/reports`, label: "Reports" },
       { href: `${base}/admin/settings`, label: "Settings" },
       { href: `${base}/admin/billing`, label: "Billing" },
       { href: `${base}/teacher/attendance`, label: "Attendance" },
