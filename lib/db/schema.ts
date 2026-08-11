@@ -4,6 +4,7 @@ import {
   bigint,
   date,
   jsonb,
+  numeric,
   pgEnum,
   pgTable,
   text,
@@ -421,6 +422,47 @@ export const attendanceEdits = pgTable("attendance_edits", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const exams = pgTable("exams", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  tenantId: uuid("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "restrict" }),
+  classId: uuid("class_id")
+    .notNull()
+    .references(() => classes.id, { onDelete: "restrict" }),
+  title: text("title").notNull(),
+  examDate: date("exam_date", { mode: "date" }).notNull(),
+  maxMarks: numeric("max_marks", { precision: 10, scale: 2 }).notNull(),
+  status: text("status").notNull().default("draft"),
+  publishedAt: timestamp("published_at", { withTimezone: true }),
+  publishedBy: text("published_by"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+});
+
+export const marks = pgTable(
+  "marks",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "restrict" }),
+    examId: uuid("exam_id")
+      .notNull()
+      .references(() => exams.id, { onDelete: "restrict" }),
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "restrict" }),
+    score: numeric("score", { precision: 10, scale: 2 }),
+    rank: integer("rank"),
+    letter: text("letter"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("marks_exam_student_uidx").on(table.examId, table.studentId)],
+);
+
 export type Tenant = typeof tenants.$inferSelect;
 export type Membership = typeof memberships.$inferSelect;
 export type AuditLogRow = typeof auditLog.$inferSelect;
@@ -438,3 +480,6 @@ export type RegistrationLink = typeof registrationLinks.$inferSelect;
 export type ClassSession = typeof classSessions.$inferSelect;
 export type AttendanceRow = typeof attendance.$inferSelect;
 export type AttendanceStatus = "present" | "absent" | "late";
+export type Exam = typeof exams.$inferSelect;
+export type MarkRow = typeof marks.$inferSelect;
+export type ExamStatus = "draft" | "published";

@@ -8,6 +8,7 @@ const linksFor = (slug: string, role: MembershipRole) => {
       { href: `${base}/admin`, label: "Dashboard" },
       { href: `${base}/admin/students`, label: "Students" },
       { href: `${base}/admin/classes`, label: "Classes" },
+      { href: `${base}/admin/exams`, label: "Exams" },
       { href: `${base}/admin/applications`, label: "Applications" },
       { href: `${base}/admin/registration-links`, label: "Reg links" },
       { href: `${base}/admin/staff`, label: "Staff" },
@@ -20,9 +21,13 @@ const linksFor = (slug: string, role: MembershipRole) => {
     return [
       { href: `${base}/teacher`, label: "Today" },
       { href: `${base}/teacher/attendance`, label: "Attendance" },
+      { href: `${base}/teacher/marks`, label: "Marks" },
     ];
   }
-  return [{ href: `${base}/student`, label: "My learning" }];
+  return [
+    { href: `${base}/student`, label: "My learning" },
+    { href: `${base}/student/results`, label: "Results" },
+  ];
 };
 
 export function TenantNav(props: {

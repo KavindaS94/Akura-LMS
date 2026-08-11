@@ -20,7 +20,7 @@ export default async function StudentHomePage({
         Student
       </h2>
       <p className="mt-2 text-muted">
-        Hello {ctx.user.email}. Your courses and results will show here later.
+        Hello {ctx.user.email}. Open Results for published marks.
       </p>
     </section>
   );
