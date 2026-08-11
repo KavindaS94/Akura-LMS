@@ -13,7 +13,10 @@ function isPublic(pathname: string) {
     pathname.startsWith("/r/") ||
     pathname.startsWith("/auth/") ||
     pathname.startsWith("/api/auth") ||
-    pathname.startsWith("/api/qr")
+    pathname.startsWith("/api/qr") ||
+    pathname.startsWith("/api/webhooks/") ||
+    pathname.startsWith("/api/cron/") ||
+    pathname.startsWith("/api/ops/")
   );
 }
 

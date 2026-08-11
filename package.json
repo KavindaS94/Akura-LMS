@@ -10,7 +10,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/db-migrate.ts",
     "db:studio": "drizzle-kit studio",
-    "test": "tsx --env-file=.env --test tests/rls-isolation.test.ts tests/roles-ownership.test.ts tests/settings-quota.test.ts tests/registration-seats.test.ts tests/attendance-lock.test.ts tests/exams-publish.test.ts tests/courses-drip.test.ts tests/email-quiet-hours.test.ts",
+    "test": "tsx --env-file=.env --test tests/rls-isolation.test.ts tests/roles-ownership.test.ts tests/settings-quota.test.ts tests/registration-seats.test.ts tests/attendance-lock.test.ts tests/exams-publish.test.ts tests/courses-drip.test.ts tests/email-quiet-hours.test.ts tests/billing-payhere.test.ts",
     "test:rls": "tsx --env-file=.env --test tests/rls-isolation.test.ts",
     "test:roles": "tsx --env-file=.env --test tests/roles-ownership.test.ts",
     "test:settings": "tsx --env-file=.env --test tests/settings-quota.test.ts",
@@ -18,7 +18,8 @@
     "test:attendance": "tsx --env-file=.env --test tests/attendance-lock.test.ts",
     "test:exams": "tsx --env-file=.env --test tests/exams-publish.test.ts",
     "test:courses": "tsx --env-file=.env --test tests/courses-drip.test.ts",
-    "test:email": "tsx --env-file=.env --test tests/email-quiet-hours.test.ts"
+    "test:email": "tsx --env-file=.env --test tests/email-quiet-hours.test.ts",
+    "test:billing": "tsx --env-file=.env --test tests/billing-payhere.test.ts"
   },
   "dependencies": {
     "@react-email/components": "^1.0.12",

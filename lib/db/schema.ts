@@ -219,6 +219,59 @@ export const usageEvents = pgTable("usage_events", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const paymentMethodEnum = pgEnum("payment_method", ["payhere", "bank"]);
+export const paymentStatusEnum = pgEnum("payment_status", [
+  "pending",
+  "paid",
+  "failed",
+  "canceled",
+  "charged_back",
+]);
+
+export const payments = pgTable("payments", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  tenantId: uuid("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "restrict" }),
+  subscriptionId: uuid("subscription_id").references(() => subscriptions.id, {
+    onDelete: "set null",
+  }),
+  orderId: text("order_id").notNull().unique(),
+  method: paymentMethodEnum("method").notNull(),
+  status: paymentStatusEnum("status").notNull().default("pending"),
+  planKey: text("plan_key")
+    .notNull()
+    .references(() => plans.key, { onDelete: "restrict" }),
+  billingCycle: billingCycleEnum("billing_cycle").notNull().default("monthly"),
+  amountMinor: integer("amount_minor").notNull(),
+  currency: text("currency").notNull().default("LKR"),
+  providerPaymentId: text("provider_payment_id"),
+  providerSubscriptionId: text("provider_subscription_id"),
+  rawPayload: jsonb("raw_payload").$type<Record<string, unknown>>().notNull().default({}),
+  createdByAuthUserId: text("created_by_auth_user_id"),
+  paidAt: timestamp("paid_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const bankTransfers = pgTable("bank_transfers", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  tenantId: uuid("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "restrict" }),
+  paymentId: uuid("payment_id")
+    .notNull()
+    .references(() => payments.id, { onDelete: "restrict" }),
+  reference: text("reference").notNull(),
+  note: text("note"),
+  status: text("status").notNull().default("pending"),
+  confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+  confirmedBy: text("confirmed_by"),
+  createdByAuthUserId: text("created_by_auth_user_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const students = pgTable("students", {
   id: uuid("id").defaultRandom().primaryKey(),
   tenantId: uuid("tenant_id")
@@ -472,6 +525,8 @@ export type MembershipRole = (typeof membershipRoleEnum.enumValues)[number];
 export type SettingDefinition = typeof settingDefinitions.$inferSelect;
 export type Subscription = typeof subscriptions.$inferSelect;
 export type Plan = typeof plans.$inferSelect;
+export type Payment = typeof payments.$inferSelect;
+export type BankTransfer = typeof bankTransfers.$inferSelect;
 export type QuotaMetric = "students" | "staff" | "storage_bytes" | "emails";
 export type Student = typeof students.$inferSelect;
 export type ClassRow = typeof classes.$inferSelect;

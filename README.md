@@ -35,9 +35,9 @@ For local signup without email confirmation, disable **Confirm email** in Supaba
 
 ## Scope
 
-Foundation through email: tenants, memberships, RLS, `withTenant()`, path tenant resolution, auth/roles, settings/billing skeleton, people/registration, attendance, exams, courses, Resend notifications.
+Foundation through billing: tenants, memberships, RLS, auth/roles, settings, people, attendance, exams, courses, email, PayHere.
 
-Later phases: PayHere billing live, harden.
+Later phases: harden (seed, export, monitoring).
 
 ## Tests
 
