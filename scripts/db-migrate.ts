@@ -1,11 +1,10 @@
 import { config } from "dotenv";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { Pool, neonConfig } from "@neondatabase/serverless";
-import ws from "ws";
+import { Pool } from "pg";
+import { pgPoolConfig } from "../lib/db/pool-config";
 
 config({ path: ".env" });
-neonConfig.webSocketConstructor = ws;
 
 const url =
   process.env.DATABASE_URL_UNPOOLED ??
@@ -17,7 +16,7 @@ if (!url) {
 }
 
 async function main() {
-  const pool = new Pool({ connectionString: url });
+  const pool = new Pool(pgPoolConfig(url!));
   const client = await pool.connect();
   try {
     await client.query(`

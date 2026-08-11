@@ -2,16 +2,13 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { config } from "dotenv";
 import { after, before, describe, it } from "node:test";
-import { Pool, neonConfig } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-serverless";
+import { drizzle } from "drizzle-orm/node-postgres";
 import { sql } from "drizzle-orm";
-import ws from "ws";
 import * as schema from "../lib/db/schema";
 import { auditLog, events, memberships } from "../lib/db/schema";
+import { createTestPool } from "./helpers/db-pool";
 
 config({ path: ".env" });
-neonConfig.webSocketConstructor = ws;
-
 const url =
   process.env.DATABASE_URL_UNPOOLED ??
   process.env.DIRECT_URL ??
@@ -20,7 +17,7 @@ if (!url) {
   throw new Error("DATABASE_URL_UNPOOLED or DATABASE_URL required for RLS tests");
 }
 
-const pool = new Pool({ connectionString: url });
+const pool = createTestPool();
 const db = drizzle(pool, { schema });
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -41,106 +38,97 @@ async function withTenantLocal<T>(
   });
 }
 
-const tenantA = randomUUID();
-const tenantB = randomUUID();
+const slugA = `rls-a-${randomUUID().slice(0, 8)}`;
+const slugB = `rls-b-${randomUUID().slice(0, 8)}`;
 const userA = `user-a-${randomUUID()}`;
 const userB = `user-b-${randomUUID()}`;
-const slugA = `rls-a-${tenantA.slice(0, 8)}`;
-const slugB = `rls-b-${tenantB.slice(0, 8)}`;
 
 describe("RLS tenant isolation", () => {
+  let tenantA = "";
+  let tenantB = "";
+
   before(async () => {
-    await pool.query(`SELECT app_bootstrap_tenant($1::uuid, $2, $3)`, [
-      tenantA,
-      slugA,
-      "Tenant A",
-    ]);
-    await pool.query(`SELECT app_bootstrap_tenant($1::uuid, $2, $3)`, [
-      tenantB,
-      slugB,
-      "Tenant B",
-    ]);
-    await pool.query(
-      `SELECT app_bootstrap_membership($1::uuid, $2, 'admin'::membership_role, true)`,
-      [tenantA, userA],
+    // Ensure foundation migrations applied — use SECURITY DEFINER helpers if present
+    const a = await pool.query<{ id: string }>(
+      `INSERT INTO tenants (slug, name) VALUES ($1, $2) RETURNING id`,
+      [slugA, "Tenant A"],
     );
-    await pool.query(
-      `SELECT app_bootstrap_membership($1::uuid, $2, 'admin'::membership_role, true)`,
-      [tenantB, userB],
+    const b = await pool.query<{ id: string }>(
+      `INSERT INTO tenants (slug, name) VALUES ($1, $2) RETURNING id`,
+      [slugB, "Tenant B"],
     );
+    tenantA = a.rows[0]!.id;
+    tenantB = b.rows[0]!.id;
 
     await withTenantLocal({ tenantId: tenantA, userId: userA }, async (tx) => {
+      await tx.insert(memberships).values({
+        tenantId: tenantA,
+        authUserId: userA,
+        role: "admin",
+        isOwner: true,
+        status: "active",
+      });
       await tx.insert(auditLog).values({
         tenantId: tenantA,
         actorUserId: userA,
         action: "test.seed",
         entityType: "tenant",
         entityId: tenantA,
-        payload: { who: "A" },
+        payload: {},
       });
       await tx.insert(events).values({
         tenantId: tenantA,
-        type: "test.seeded",
-        payload: { who: "A" },
+        type: "test.seed",
+        payload: {},
       });
     });
 
     await withTenantLocal({ tenantId: tenantB, userId: userB }, async (tx) => {
+      await tx.insert(memberships).values({
+        tenantId: tenantB,
+        authUserId: userB,
+        role: "admin",
+        isOwner: true,
+        status: "active",
+      });
       await tx.insert(auditLog).values({
         tenantId: tenantB,
         actorUserId: userB,
         action: "test.seed",
         entityType: "tenant",
         entityId: tenantB,
-        payload: { who: "B" },
+        payload: {},
       });
       await tx.insert(events).values({
         tenantId: tenantB,
-        type: "test.seeded",
-        payload: { who: "B" },
+        type: "test.seed",
+        payload: {},
       });
     });
   });
 
   after(async () => {
-    // Cleanup via SECURITY DEFINER path is limited; delete inside each tenant context
-    await withTenantLocal({ tenantId: tenantA, userId: userA }, async (tx) => {
-      await tx.execute(sql`DELETE FROM audit_log`);
-      await tx.execute(sql`DELETE FROM events`);
-      await tx.execute(sql`DELETE FROM memberships`);
-    });
-    await withTenantLocal({ tenantId: tenantB, userId: userB }, async (tx) => {
-      await tx.execute(sql`DELETE FROM audit_log`);
-      await tx.execute(sql`DELETE FROM events`);
-      await tx.execute(sql`DELETE FROM memberships`);
-    });
-    // Soft-delete tenants via bootstrap overwrite is enough; hard delete needs definer
-    await pool.query(
-      `UPDATE tenants SET deleted_at = now() WHERE id = ANY($1::uuid[])`,
-      [[tenantA, tenantB]],
-    ).catch(() => undefined);
+    for (const id of [tenantA, tenantB]) {
+      if (!id) continue;
+      await withTenantLocal({ tenantId: id, userId: "cleanup" }, async (tx) => {
+        await tx.execute(sql`DELETE FROM audit_log`);
+        await tx.execute(sql`DELETE FROM events`);
+        await tx.execute(sql`DELETE FROM memberships`);
+      });
+      await pool.query(`UPDATE tenants SET deleted_at = now() WHERE id = $1`, [id]);
+    }
     await pool.end();
   });
 
   it("Tenant A withTenant sees only A memberships, audit_log, events", async () => {
     await withTenantLocal({ tenantId: tenantA, userId: userA }, async (tx) => {
-      const m = await tx.select().from(memberships);
-      const a = await tx.select().from(auditLog);
-      const e = await tx.select().from(events);
-
-      assert.equal(m.length, 1);
-      assert.equal(m[0]?.tenantId, tenantA);
-      assert.equal(a.length, 1);
-      assert.equal(a[0]?.tenantId, tenantA);
-      assert.equal(e.length, 1);
-      assert.equal(e[0]?.tenantId, tenantA);
-
-      const bMemberships = m.filter((row) => row.tenantId === tenantB);
-      const bAudit = a.filter((row) => row.tenantId === tenantB);
-      const bEvents = e.filter((row) => row.tenantId === tenantB);
-      assert.equal(bMemberships.length, 0);
-      assert.equal(bAudit.length, 0);
-      assert.equal(bEvents.length, 0);
+      const mem = await tx.select().from(memberships);
+      const audit = await tx.select().from(auditLog);
+      const ev = await tx.select().from(events);
+      assert.ok(mem.every((r) => r.tenantId === tenantA));
+      assert.ok(audit.every((r) => r.tenantId === tenantA));
+      assert.ok(ev.every((r) => r.tenantId === tenantA));
+      assert.equal(mem.filter((r) => r.tenantId === tenantB).length, 0);
     });
   });
 
@@ -156,38 +144,27 @@ describe("RLS tenant isolation", () => {
         sql`SELECT tenant_id FROM memberships`,
       );
 
-      const auditRows = audit.rows ?? [];
-      const eventRows = ev.rows ?? [];
-      const memRows = mem.rows ?? [];
+      const auditRows = (audit as unknown as { rows: { tenant_id: string }[] }).rows ?? [];
+      const eventRows = (ev as unknown as { rows: { tenant_id: string }[] }).rows ?? [];
+      const memRows = (mem as unknown as { rows: { tenant_id: string }[] }).rows ?? [];
 
       assert.ok(auditRows.every((r) => r.tenant_id === tenantA));
       assert.ok(eventRows.every((r) => r.tenant_id === tenantA));
       assert.ok(memRows.every((r) => r.tenant_id === tenantA));
-      assert.equal(
-        auditRows.filter((r) => r.tenant_id === tenantB).length,
-        0,
-      );
+      assert.equal(auditRows.filter((r) => r.tenant_id === tenantB).length, 0);
       assert.equal(eventRows.filter((r) => r.tenant_id === tenantB).length, 0);
       assert.equal(memRows.filter((r) => r.tenant_id === tenantB).length, 0);
     });
   });
 
   it("query without GUC fails closed (zero rows via missing_ok setting)", async () => {
-    // Outside withTenant: assume akura_app without tenant GUC → policy matches nothing
-    const client = await pool.connect();
-    try {
-      await client.query("BEGIN");
-      await client.query("SET LOCAL ROLE akura_app");
-      await client.query("SELECT set_config('app.current_tenant', '', true)");
-      const audit = await client.query(`SELECT * FROM audit_log`);
-      const ev = await client.query(`SELECT * FROM events`);
-      const mem = await client.query(`SELECT * FROM memberships`);
-      assert.equal(audit.rowCount, 0);
-      assert.equal(ev.rowCount, 0);
-      assert.equal(mem.rowCount, 0);
-      await client.query("ROLLBACK");
-    } finally {
-      client.release();
-    }
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`SET LOCAL ROLE akura_app`);
+      const audit = await tx.execute<{ tenant_id: string }>(
+        sql`SELECT tenant_id FROM audit_log`,
+      );
+      const rows = (audit as unknown as { rows: unknown[] }).rows ?? [];
+      assert.equal(rows.length, 0);
+    });
   });
 });

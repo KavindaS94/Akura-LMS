@@ -12,6 +12,7 @@ import { createTenantWithOwner, transferOwnership } from "@/lib/tenant/ownership
 import { redirectToRoleHome, requireRole } from "@/lib/tenant/context";
 import { getSessionUser } from "@/lib/auth/session";
 import { ADMIN_ROLES, roleHomePath } from "@/lib/rbac";
+import { rowsOf } from "@/lib/db/result";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -91,17 +92,29 @@ export async function signupAction(
     return { error: "Could not create account. The email may already be in use." };
   }
 
-  const signIn = await auth.signIn.email({
-    email: parsed.data.email,
-    password: parsed.data.password,
-  });
-  if (signIn.error) {
-    return { error: "Account created but sign-in failed. Try logging in." };
-  }
-
-  const user = await getSessionUser();
+  // Prefer session; fall back to signUp user when email confirmation is enabled.
+  let user = await getSessionUser();
   if (!user) {
-    return { error: "Account created but session missing. Try logging in." };
+    const signIn = await auth.signIn.email({
+      email: parsed.data.email,
+      password: parsed.data.password,
+    });
+    if (!signIn.error) {
+      user = await getSessionUser();
+    }
+  }
+  if (!user && signUp.user) {
+    user = {
+      id: signUp.user.id,
+      email: signUp.user.email,
+      name: parsed.data.name,
+    };
+  }
+  if (!user) {
+    return {
+      error:
+        "Account created. Confirm your email (if required), then sign in to finish setup.",
+    };
   }
 
   try {
@@ -119,6 +132,14 @@ export async function signupAction(
       return { error: "Invalid institute slug." };
     }
     return { error: "Could not create your institute. Try a different slug." };
+  }
+
+  const session = await getSessionUser();
+  if (!session) {
+    return {
+      error:
+        "Institute created. Confirm your email if prompted, then sign in at /login.",
+    };
   }
 
   redirect(`/i/${parsed.data.slug}/admin/onboarding`);
@@ -195,16 +216,16 @@ export async function acceptInviteAction(
     return { error: "Check your details and try again." };
   }
 
-  const preview = await db.execute<{
+  const preview = await db.execute(sql`SELECT * FROM app_resolve_invitation_by_token(${parsed.data.token})`);
+
+  const invite = rowsOf<{
     email: string;
     tenant_slug: string;
     role: "admin" | "teacher" | "student";
     accepted_at: Date | null;
     expires_at: Date;
     deleted_at: Date | null;
-  }>(sql`SELECT * FROM app_resolve_invitation_by_token(${parsed.data.token})`);
-
-  const invite = preview.rows[0];
+  }>(preview)[0];
   if (!invite || invite.deleted_at) {
     return { error: "Invite not found." };
   }

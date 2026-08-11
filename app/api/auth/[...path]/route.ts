@@ -1,38 +1,16 @@
-import { auth } from "@/lib/auth/server";
-import { enforceHostCookies } from "@/lib/auth/cookies";
+import { NextResponse } from "next/server";
 
-const handler = auth.handler();
-
-async function wrap(
-  method: keyof typeof handler,
-  request: Request,
-  ctx: { params: Promise<{ path: string[] }> },
-) {
-  const response = await handler[method](request, ctx);
-  return enforceHostCookies(response);
+/**
+ * Neon Auth catch-all removed. Supabase Auth uses cookie sessions via
+ * @supabase/ssr — no Better Auth HTTP handler on this path.
+ */
+export async function GET() {
+  return NextResponse.json(
+    { error: "Use Supabase Auth. See /login and /auth/callback." },
+    { status: 410 },
+  );
 }
 
-export const GET = (
-  request: Request,
-  ctx: { params: Promise<{ path: string[] }> },
-) => wrap("GET", request, ctx);
-
-export const POST = (
-  request: Request,
-  ctx: { params: Promise<{ path: string[] }> },
-) => wrap("POST", request, ctx);
-
-export const PUT = (
-  request: Request,
-  ctx: { params: Promise<{ path: string[] }> },
-) => wrap("PUT", request, ctx);
-
-export const PATCH = (
-  request: Request,
-  ctx: { params: Promise<{ path: string[] }> },
-) => wrap("PATCH", request, ctx);
-
-export const DELETE = (
-  request: Request,
-  ctx: { params: Promise<{ path: string[] }> },
-) => wrap("DELETE", request, ctx);
+export async function POST() {
+  return GET();
+}

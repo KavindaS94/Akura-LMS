@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, before, describe, it } from "node:test";
-import { Pool, neonConfig } from "@neondatabase/serverless";
-import ws from "ws";
+import { createTestPool } from "./helpers/db-pool";
 import { sql } from "drizzle-orm";
 import { withTenant } from "../lib/db/tenant";
 import {
@@ -13,15 +12,13 @@ import {
 import { getUsageSnapshot, QuotaError } from "../lib/billing/quota";
 import { studentApplications } from "../lib/db/schema";
 
-neonConfig.webSocketConstructor = ws;
-
 const url =
   process.env.DATABASE_URL_UNPOOLED ??
   process.env.DIRECT_URL ??
   process.env.DATABASE_URL;
 if (!url) throw new Error("DATABASE_URL required");
 
-const pool = new Pool({ connectionString: url });
+const pool = createTestPool();
 const slug = `p4-${randomUUID().slice(0, 8)}`;
 const ownerUser = `owner-${randomUUID()}`;
 

@@ -7,6 +7,7 @@ import {
 } from "@/lib/db/schema";
 import { withTenant, type Tx } from "@/lib/db/tenant";
 import { db } from "@/lib/db";
+import { rowsOf } from "@/lib/db/result";
 import { sql } from "drizzle-orm";
 
 export class SettingsError extends Error {
@@ -17,24 +18,23 @@ export class SettingsError extends Error {
 }
 
 export async function listSettingDefinitions(): Promise<SettingDefinition[]> {
-  const result = await db.execute<SettingDefinition>(
+  const result = await db.execute(
     sql`SELECT * FROM app_list_setting_definitions()`,
   );
-  return result.rows.map((row) => ({
-    key: (row as unknown as { key: string }).key,
-    capability: (row as unknown as { capability: string }).capability,
-    type: (row as unknown as { type: string }).type,
-    defaultValue: (row as unknown as { default_value: unknown }).default_value,
-    validation: ((row as unknown as { validation: Record<string, unknown> }).validation ??
-      {}) as Record<string, unknown>,
-    label: (row as unknown as { label: string }).label,
-    description: (row as unknown as { description: string }).description ?? "",
-    scope: (row as unknown as { scope: string }).scope,
-    requiresRole: (row as unknown as { requires_role: SettingDefinition["requiresRole"] })
-      .requires_role,
-    createdAt: new Date(
-      (row as unknown as { created_at: string | Date }).created_at,
-    ),
+  return rowsOf<Record<string, unknown>>(result).map((row) => ({
+    key: row.key as string,
+    capability: row.capability as string,
+    type: row.type as string,
+    defaultValue: row.default_value,
+    validation: ((row.validation as Record<string, unknown>) ?? {}) as Record<
+      string,
+      unknown
+    >,
+    label: row.label as string,
+    description: (row.description as string) ?? "",
+    scope: row.scope as string,
+    requiresRole: row.requires_role as SettingDefinition["requiresRole"],
+    createdAt: new Date(row.created_at as string | Date),
   }));
 }
 

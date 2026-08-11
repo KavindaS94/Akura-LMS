@@ -4,25 +4,25 @@ Multi-tenant Learning Management System for education institutes. Built by Elgir
 
 Tenant workspaces live at `/i/{slug}`. Every institute gets every feature; plans differ only by capacity.
 
-## Stack (Phase 1)
+## Stack
 
 - Next.js App Router + TypeScript
-- Neon Postgres + Drizzle ORM
-- `@neondatabase/serverless` WebSocket/pooled driver
-- Neon Auth (Managed Better Auth)
+- Supabase Postgres + Drizzle ORM (`pg` driver)
+- Supabase Auth (`@supabase/ssr`)
 - Tailwind CSS
+- Supabase Storage for course files
 
 ## Prerequisites
 
 - Node.js 20+
-- Neon project with Auth enabled
-- Pooled + unpooled connection strings
+- Supabase project (Postgres + Auth)
+- Database connection string (direct or session pooler that supports `SET LOCAL` in a transaction)
 
 ## Setup
 
 ```bash
 cp .env.example .env
-# Fill DATABASE_URL (pooled), DATABASE_URL_UNPOOLED (migrate), Neon Auth vars
+# Fill DATABASE_URL, NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 npm install
 npm run db:migrate
@@ -31,11 +31,13 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-## Phase 1 scope
+For local signup without email confirmation, disable **Confirm email** in Supabase Auth → Providers → Email.
 
-Foundation only: `tenants`, `memberships`, `audit_log`, `events`, RLS, `withTenant()`, path tenant resolution, `__Host-`-compatible session cookies, cross-tenant isolation tests.
+## Scope
 
-Later phases add roles UX, settings, billing, attendance, exams, courses, email, and PayHere.
+Foundation through courses: tenants, memberships, RLS, `withTenant()`, path tenant resolution, auth/roles, settings/billing skeleton, people/registration, attendance, exams, courses.
+
+Later phases: email (Resend), PayHere billing live, harden.
 
 ## Tests
 
@@ -43,16 +45,15 @@ Later phases add roles UX, settings, billing, attendance, exams, courses, email,
 npm test
 ```
 
-Requires `DATABASE_URL_UNPOOLED` (or `DATABASE_URL`) pointing at a database with foundation migrations applied. The RLS suite seeds two tenants and asserts Tenant A cannot see Tenant B rows.
+Requires `DATABASE_URL` (or `DATABASE_URL_UNPOOLED`) pointing at a database with migrations applied.
 
 ## Database roles
 
-Neon’s `neondb_owner` has `BYPASSRLS`. Migrations create an `akura_app` role **without** `BYPASSRLS`. Every tenant query path calls `SET LOCAL ROLE akura_app` inside `withTenant()` so RLS always applies, even when the connection string uses the owner.
+The Supabase `postgres` role can bypass RLS. Migrations create an `akura_app` role **without** `BYPASSRLS`. Every tenant query path calls `SET LOCAL ROLE akura_app` inside `withTenant()` so RLS always applies.
 
-Session cookies must never use a parent `Domain` (e.g. `.elgiriya.com`). Neon Auth is configured with **no `domain`**, `SameSite=Lax`, and the auth route rewrites `Set-Cookie` headers toward `__Host-` names with `Secure`, `HttpOnly`, `Path=/`.
+Session cookies must never use a parent `Domain` (e.g. `.elgiriya.com`). Supabase SSR cookies are set with `domain: undefined`, `SameSite=Lax`, and `Path=/`.
 
 ## Docs
 
 - [`AGENTS.md`](AGENTS.md) — product brief and invariants
 - [`docs/AUDIT.md`](docs/AUDIT.md) — Phase 0 audit (pre-Akura codebase)
-- [`docs/superpowers/plans/2026-08-11-akura-phase-1-foundation.md`](docs/superpowers/plans/2026-08-11-akura-phase-1-foundation.md) — Phase 1 checklist

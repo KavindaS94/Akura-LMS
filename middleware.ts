@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth } from "@/lib/auth/server";
-
-const neonMiddleware = auth.middleware({
-  loginUrl: "/login",
-});
+import { updateSession } from "@/lib/auth/middleware";
 
 function isPublic(pathname: string) {
   return (
@@ -15,6 +11,7 @@ function isPublic(pathname: string) {
     pathname.startsWith("/pending-approval") ||
     pathname.startsWith("/join/") ||
     pathname.startsWith("/r/") ||
+    pathname.startsWith("/auth/") ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/qr")
   );
@@ -26,13 +23,12 @@ export default async function middleware(req: NextRequest) {
   }
 
   const { pathname } = req.nextUrl;
-  if (isPublic(pathname)) {
-    return NextResponse.next();
-  }
+  const { response, user } = await updateSession(req);
 
-  const authResponse = await neonMiddleware(req);
-  if (authResponse.status >= 300 && authResponse.status < 400) {
-    return authResponse;
+  if (!isPublic(pathname) && !user) {
+    const login = new URL("/login", req.url);
+    login.searchParams.set("next", pathname);
+    return NextResponse.redirect(login);
   }
 
   const requestHeaders = new Headers(req.headers);
@@ -45,10 +41,8 @@ export default async function middleware(req: NextRequest) {
     request: { headers: requestHeaders },
   });
 
-  authResponse.headers.forEach((value, key) => {
-    if (key.toLowerCase() === "set-cookie") {
-      next.headers.append(key, value);
-    }
+  response.cookies.getAll().forEach((c) => {
+    next.cookies.set(c);
   });
 
   return next;

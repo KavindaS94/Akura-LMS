@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
+import { rowsOf } from "@/lib/db/result";
 import { AcceptInviteForm } from "@/components/auth-forms";
 
 export const dynamic = "force-dynamic";
@@ -23,16 +24,18 @@ export default async function AcceptInvitePage({
     );
   }
 
-  const result = await db.execute<{
+  const result = await db.execute(
+    sql`SELECT * FROM app_resolve_invitation_by_token(${token})`,
+  );
+
+  const invite = rowsOf<{
     tenant_name: string;
     email: string;
     role: string;
     accepted_at: Date | null;
     expires_at: Date;
     deleted_at: Date | null;
-  }>(sql`SELECT * FROM app_resolve_invitation_by_token(${token})`);
-
-  const invite = result.rows[0];
+  }>(result)[0];
   if (!invite || invite.deleted_at) {
     return (
       <main className="mx-auto max-w-md px-6 py-24 text-center">

@@ -15,6 +15,7 @@ import {
   students,
 } from "@/lib/db/schema";
 import { withTenant } from "@/lib/db/tenant";
+import { rowsOf } from "@/lib/db/result";
 import { requireRole } from "@/lib/tenant/context";
 import { ADMIN_ROLES } from "@/lib/rbac";
 import { getSessionUser } from "@/lib/auth/session";
@@ -371,11 +372,13 @@ export async function submitPublicApplicationAction(
   });
   if (!parsed.success) return { error: "Check the form and try again." };
 
-  const linkRes = await db.execute<{
+  const linkRes = await db.execute(
+    sql`SELECT id, collect_guardian FROM app_resolve_registration_link(${parsed.data.token})`,
+  );
+  const link = rowsOf<{
     id: string;
     collect_guardian: boolean;
-  }>(sql`SELECT id, collect_guardian FROM app_resolve_registration_link(${parsed.data.token})`);
-  const link = linkRes.rows[0];
+  }>(linkRes)[0];
   if (!link) return { error: "Registration link not found." };
 
   if (link.collect_guardian && !parsed.data.guardianName) {

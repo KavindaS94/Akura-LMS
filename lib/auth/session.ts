@@ -1,22 +1,20 @@
-import { auth } from "@/lib/auth/server";
+import { createClient } from "@/lib/auth/server";
 
 export async function getSessionUser() {
-  const result = await auth.getSession();
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data.user?.id || !data.user.email) return null;
 
-  // Neon Auth may return { data, error } or a session-shaped object
-  const payload = (result && typeof result === "object" && "data" in result
-    ? (result as { data: unknown }).data
-    : result) as {
-    user?: { id?: string; email?: string; name?: string | null };
-    session?: { user?: { id?: string; email?: string; name?: string | null } };
-  } | null;
-
-  const user = payload?.user ?? payload?.session?.user;
-  if (!user?.id || !user.email) return null;
+  const name =
+    (typeof data.user.user_metadata?.name === "string"
+      ? data.user.user_metadata.name
+      : null) ??
+    data.user.email.split("@")[0] ??
+    null;
 
   return {
-    id: user.id,
-    email: user.email,
-    name: user.name ?? null,
+    id: data.user.id,
+    email: data.user.email,
+    name,
   };
 }

@@ -1,6 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
+import { rowsOf } from "@/lib/db/result";
 import type { Membership, MembershipRole, Tenant } from "@/lib/db/schema";
 import { getSessionUser } from "@/lib/auth/session";
 import {
@@ -20,14 +21,16 @@ export type TenantContext = {
 };
 
 export async function listMembershipsForUser(authUserId: string) {
-  const result = await db.execute<{
+  const result = await db.execute(
+    sql`SELECT * FROM app_list_memberships_for_user(${authUserId})`,
+  );
+  return rowsOf<{
     tenant_id: string;
     tenant_slug: string;
     tenant_name: string;
     role: MembershipRole;
     is_owner: boolean;
-  }>(sql`SELECT * FROM app_list_memberships_for_user(${authUserId})`);
-  return result.rows;
+  }>(result);
 }
 
 export async function getTenantContext(slug: string): Promise<TenantContext> {

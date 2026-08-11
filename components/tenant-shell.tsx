@@ -8,6 +8,7 @@ const linksFor = (slug: string, role: MembershipRole) => {
       { href: `${base}/admin`, label: "Dashboard" },
       { href: `${base}/admin/students`, label: "Students" },
       { href: `${base}/admin/classes`, label: "Classes" },
+      { href: `${base}/admin/courses`, label: "Courses" },
       { href: `${base}/admin/exams`, label: "Exams" },
       { href: `${base}/admin/applications`, label: "Applications" },
       { href: `${base}/admin/registration-links`, label: "Reg links" },
@@ -22,10 +23,12 @@ const linksFor = (slug: string, role: MembershipRole) => {
       { href: `${base}/teacher`, label: "Today" },
       { href: `${base}/teacher/attendance`, label: "Attendance" },
       { href: `${base}/teacher/marks`, label: "Marks" },
+      { href: `${base}/teacher/course-editor`, label: "Courses" },
     ];
   }
   return [
     { href: `${base}/student`, label: "My learning" },
+    { href: `${base}/student/courses`, label: "Courses" },
     { href: `${base}/student/results`, label: "Results" },
   ];
 };

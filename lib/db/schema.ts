@@ -483,3 +483,86 @@ export type AttendanceStatus = "present" | "absent" | "late";
 export type Exam = typeof exams.$inferSelect;
 export type MarkRow = typeof marks.$inferSelect;
 export type ExamStatus = "draft" | "published";
+
+export const courses = pgTable("courses", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  tenantId: uuid("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "restrict" }),
+  classId: uuid("class_id")
+    .notNull()
+    .references(() => classes.id, { onDelete: "restrict" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  status: text("status").notNull().default("draft"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+});
+
+export const modules = pgTable("modules", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  tenantId: uuid("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "restrict" }),
+  courseId: uuid("course_id")
+    .notNull()
+    .references(() => courses.id, { onDelete: "restrict" }),
+  title: text("title").notNull(),
+  position: integer("position").notNull().default(0),
+  dripEnabled: boolean("drip_enabled").notNull().default(false),
+  availableAt: timestamp("available_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+});
+
+export const resources = pgTable("resources", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  tenantId: uuid("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "restrict" }),
+  moduleId: uuid("module_id")
+    .notNull()
+    .references(() => modules.id, { onDelete: "restrict" }),
+  title: text("title").notNull(),
+  type: text("type").notNull(),
+  position: integer("position").notNull().default(0),
+  body: text("body"),
+  externalUrl: text("external_url"),
+  storageKey: text("storage_key"),
+  mimeType: text("mime_type"),
+  sizeBytes: bigint("size_bytes", { mode: "number" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+});
+
+export const resourceViews = pgTable(
+  "resource_views",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "restrict" }),
+    resourceId: uuid("resource_id")
+      .notNull()
+      .references(() => resources.id, { onDelete: "restrict" }),
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "restrict" }),
+    viewedAt: timestamp("viewed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("resource_views_resource_student_uidx").on(
+      table.resourceId,
+      table.studentId,
+    ),
+  ],
+);
+
+export type Course = typeof courses.$inferSelect;
+export type ModuleRow = typeof modules.$inferSelect;
+export type ResourceRow = typeof resources.$inferSelect;
+export type ResourceType = "file" | "link" | "text";
+export type CourseStatus = "draft" | "published";

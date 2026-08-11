@@ -2,6 +2,7 @@ import { eq, and, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { memberships, tenants } from "@/lib/db/schema";
 import { withTenant } from "@/lib/db/tenant";
+import { rowsOf } from "@/lib/db/result";
 
 export class TenantError extends Error {
   constructor(
@@ -14,10 +15,10 @@ export class TenantError extends Error {
 }
 
 export async function resolveTenantIdBySlug(slug: string): Promise<string | null> {
-  const result = await db.execute<{ app_resolve_tenant_id: string | null }>(
+  const result = await db.execute(
     sql`SELECT app_resolve_tenant_id(${slug}) AS app_resolve_tenant_id`,
   );
-  const row = result.rows[0];
+  const row = rowsOf<{ app_resolve_tenant_id: string | null }>(result)[0];
   return row?.app_resolve_tenant_id ?? null;
 }
 

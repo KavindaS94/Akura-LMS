@@ -1,16 +1,15 @@
-import { Pool, neonConfig } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-serverless";
-import ws from "ws";
+import { Pool } from "pg";
+import { drizzle } from "drizzle-orm/node-postgres";
 import * as schema from "./schema";
-
-neonConfig.webSocketConstructor = ws;
+import { pgPoolConfig } from "./pool-config";
 
 const globalForDb = globalThis as unknown as {
   akuraPool?: Pool;
 };
 
 function getConnectionString() {
-  const connectionString = process.env.DATABASE_URL;
+  const connectionString =
+    process.env.DATABASE_URL ?? process.env.DATABASE_URL_UNPOOLED;
   if (!connectionString) {
     throw new Error("DATABASE_URL is required");
   }
@@ -19,7 +18,7 @@ function getConnectionString() {
 
 function getPool() {
   if (!globalForDb.akuraPool) {
-    globalForDb.akuraPool = new Pool({ connectionString: getConnectionString() });
+    globalForDb.akuraPool = new Pool(pgPoolConfig(getConnectionString()));
   }
   return globalForDb.akuraPool;
 }

@@ -27,8 +27,8 @@ jobs:
     env:
       DATABASE_URL: postgresql://akura:akura@localhost:5432/akura
       DATABASE_URL_UNPOOLED: postgresql://akura:akura@localhost:5432/akura
-      NEON_AUTH_BASE_URL: https://example.invalid/auth
-      NEON_AUTH_COOKIE_SECRET: ci-test-cookie-secret-at-least-32-chars
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-anon-key-not-used-by-rls-tests
 
     steps:
       - uses: actions/checkout@v4

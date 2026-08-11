@@ -1,26 +1,31 @@
 import type { Metadata } from "next";
 import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
+import { rowsOf } from "@/lib/db/result";
 import { PublicRegistrationForm } from "@/components/people-forms";
 
 export const dynamic = "force-dynamic";
 
 async function loadByJoinSlug(joinSlug: string) {
-  const result = await db.execute<{
-    token: string;
-    tenant_name: string;
-    accent_color: string | null;
-    logo_url: string | null;
-    label: string;
-    class_name: string | null;
-    collect_guardian: boolean;
-    is_active: boolean;
-    expires_at: Date | null;
-    max_uses: number | null;
-    use_count: number;
-    deleted_at: Date | null;
-  }>(sql`SELECT * FROM app_resolve_registration_by_join_slug(${joinSlug})`);
-  return result.rows[0] ?? null;
+  const result = await db.execute(
+    sql`SELECT * FROM app_resolve_registration_by_join_slug(${joinSlug})`,
+  );
+  return (
+    rowsOf<{
+      token: string;
+      tenant_name: string;
+      accent_color: string | null;
+      logo_url: string | null;
+      label: string;
+      class_name: string | null;
+      collect_guardian: boolean;
+      is_active: boolean;
+      expires_at: Date | null;
+      max_uses: number | null;
+      use_count: number;
+      deleted_at: Date | null;
+    }>(result)[0] ?? null
+  );
 }
 
 export async function generateMetadata({

@@ -1,5 +1,6 @@
 import { and, count, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
+import { rowsOf } from "@/lib/db/result";
 import { auditLog, memberships, type Membership } from "@/lib/db/schema";
 import { withTenant, type Tx } from "@/lib/db/tenant";
 import { ForbiddenError } from "@/lib/rbac";
@@ -172,7 +173,7 @@ export async function createTenantWithOwner(opts: {
   authUserId: string;
   timezone?: string;
 }): Promise<string> {
-  const result = await db.execute<{ app_create_tenant_with_owner: string }>(
+  const result = await db.execute(
     sql`SELECT app_create_tenant_with_owner(
       ${opts.slug},
       ${opts.name},
@@ -180,7 +181,8 @@ export async function createTenantWithOwner(opts: {
       ${opts.timezone ?? "Asia/Colombo"}
     ) AS app_create_tenant_with_owner`,
   );
-  const id = result.rows[0]?.app_create_tenant_with_owner;
+  const id = rowsOf<{ app_create_tenant_with_owner: string }>(result)[0]
+    ?.app_create_tenant_with_owner;
   if (!id) throw new Error("Failed to create tenant.");
   return id;
 }
