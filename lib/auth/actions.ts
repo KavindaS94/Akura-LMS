@@ -11,8 +11,10 @@ import { withTenant } from "@/lib/db/tenant";
 import { createTenantWithOwner, transferOwnership } from "@/lib/tenant/ownership";
 import { redirectToRoleHome, requireRole } from "@/lib/tenant/context";
 import { getSessionUser } from "@/lib/auth/session";
-import { ADMIN_ROLES, roleHomePath } from "@/lib/rbac";
 import { rowsOf } from "@/lib/db/result";
+import { isResendConfigured, sendEmail } from "@/lib/email/client";
+import { InviteEmail } from "@/emails/invite";
+import { ADMIN_ROLES, roleHomePath } from "@/lib/rbac";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -167,6 +169,10 @@ export async function createInviteAction(
 
   const token = randomBytes(24).toString("hex");
   const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 14);
+  const base =
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
+    "http://localhost:3000";
+  const acceptUrl = `${base}/accept-invite?token=${token}`;
 
   await withTenant(
     { tenantId: ctx.tenantId, userId: ctx.user.id },
@@ -190,8 +196,34 @@ export async function createInviteAction(
     },
   );
 
+  let emailed = false;
+  if (isResendConfigured()) {
+    try {
+      await sendEmail({
+        to: parsed.data.email,
+        subject: `You're invited to ${ctx.tenant.name}`,
+        react: InviteEmail({
+          instituteName: ctx.tenant.name,
+          role: parsed.data.role,
+          acceptUrl,
+          expiresLabel: expiresAt.toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          }),
+        }),
+        idempotencyKey: `invite:${ctx.tenantId}:${token}`,
+      });
+      emailed = true;
+    } catch {
+      // Keep invite usable via link even if email fails
+    }
+  }
+
   return {
-    ok: "Invite created. Share the link (email delivery comes in Phase 8).",
+    ok: emailed
+      ? "Invite created and emailed."
+      : "Invite created. Share the link (configure Resend to email automatically).",
     inviteUrl: `/accept-invite?token=${token}`,
   };
 }
