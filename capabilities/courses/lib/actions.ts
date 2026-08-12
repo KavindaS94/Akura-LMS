@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { requireRole } from "@/lib/tenant/context";
-import { ADMIN_ROLES, TEACHER_ROLES, STUDENT_ROLES } from "@/lib/rbac";
+import { TEACHER_ROLES, STUDENT_ROLES } from "@/lib/rbac";
 import {
   addModule,
   addResource,

@@ -35,6 +35,7 @@ export function nextPeriodEnd(
 export function statusAfterSuccessfulPayment(
   _current: SubscriptionStatus,
 ): "active" {
+  void _current;
   return "active";
 }
 

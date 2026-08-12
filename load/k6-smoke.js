@@ -19,7 +19,7 @@ export const options = {
   },
 };
 
-export default function () {
+function smoke() {
   const health = http.get(`${BASE}/api/health`);
   check(health, {
     "health 200": (r) => r.status === 200,
@@ -33,3 +33,5 @@ export default function () {
 
   sleep(1);
 }
+
+export default smoke;
