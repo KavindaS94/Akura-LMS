@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
 import { after, before, describe, it } from "node:test";
 import { createTestPool } from "./helpers/db-pool";
+import { createTestTenant } from "./helpers/test-tenant";
 import { getSetting, setSetting, listSettingDefinitions } from "../lib/settings";
 import {
   assertQuota,
@@ -12,44 +12,32 @@ import {
 import { withTenant } from "../lib/db/tenant";
 import { sql } from "drizzle-orm";
 
-const url =
-  process.env.DATABASE_URL_UNPOOLED ??
-  process.env.DIRECT_URL ??
-  process.env.DATABASE_URL;
-if (!url) throw new Error("DATABASE_URL required");
-
 const pool = createTestPool();
-const slug = `p3-${randomUUID().slice(0, 8)}`;
-const ownerUser = `owner-${randomUUID()}`;
+let tenantId = "";
+let ownerUser = "";
 
 describe("Phase 3 settings & quotas", () => {
-  let tenantId = "";
-
   before(async () => {
-    const created = await pool.query<{ app_create_tenant_with_owner: string }>(
-      `SELECT app_create_tenant_with_owner($1, $2, $3, 'Asia/Colombo') AS app_create_tenant_with_owner`,
-      [slug, "Phase 3 Institute", ownerUser],
-    );
-    tenantId = created.rows[0]!.app_create_tenant_with_owner;
+    const t = await createTestTenant(pool);
+    tenantId = t.tenantId;
+    ownerUser = t.ownerUserId;
   });
 
   after(async () => {
-    if (tenantId) {
-      await withTenant({ tenantId, userId: ownerUser }, async (tx) => {
-        await tx.execute(sql`DELETE FROM setting_history`);
-        await tx.execute(sql`DELETE FROM tenant_settings`);
-        await tx.execute(sql`DELETE FROM usage_events`);
-        await tx.execute(sql`DELETE FROM usage_counters`);
-        await tx.execute(sql`DELETE FROM subscriptions`);
-        await tx.execute(sql`DELETE FROM invitations`);
-        await tx.execute(sql`DELETE FROM audit_log`);
-        await tx.execute(sql`DELETE FROM events`);
-        await tx.execute(sql`DELETE FROM memberships`);
-      });
-      await pool.query(`UPDATE tenants SET deleted_at = now() WHERE id = $1`, [
-        tenantId,
-      ]);
-    }
+    await withTenant({ tenantId, userId: ownerUser }, async (tx) => {
+      await tx.execute(sql`DELETE FROM setting_history`);
+      await tx.execute(sql`DELETE FROM tenant_settings`);
+      await tx.execute(sql`DELETE FROM usage_events`);
+      await tx.execute(sql`DELETE FROM usage_counters`);
+      await tx.execute(sql`DELETE FROM subscriptions`);
+      await tx.execute(sql`DELETE FROM invitations`);
+      await tx.execute(sql`DELETE FROM audit_log`);
+      await tx.execute(sql`DELETE FROM events`);
+      await tx.execute(sql`DELETE FROM memberships`);
+    });
+    await pool.query(`UPDATE tenants SET deleted_at = now() WHERE id = $1`, [
+      tenantId,
+    ]);
     await pool.end();
   });
 
@@ -98,14 +86,15 @@ describe("Phase 3 settings & quotas", () => {
         sql`UPDATE subscriptions SET status = 'read_only' WHERE tenant_id = ${tenantId}::uuid`,
       );
     });
+
     await assert.rejects(
       () => assertWritable(tenantId, ownerUser),
-      WritableError,
+      (err: unknown) => err instanceof WritableError,
     );
-    // restore
+
     await withTenant({ tenantId, userId: ownerUser }, async (tx) => {
       await tx.execute(
-        sql`UPDATE subscriptions SET status = 'trialing' WHERE tenant_id = ${tenantId}::uuid`,
+        sql`UPDATE subscriptions SET status = 'active' WHERE tenant_id = ${tenantId}::uuid`,
       );
     });
   });

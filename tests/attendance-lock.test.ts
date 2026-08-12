@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, before, describe, it } from "node:test";
 import { createTestPool } from "./helpers/db-pool";
+import { createTestTenant } from "./helpers/test-tenant";
 import { sql } from "drizzle-orm";
 import { withTenant } from "../lib/db/tenant";
 import { classes } from "../lib/db/schema";
@@ -13,28 +14,19 @@ import {
 } from "../capabilities/attendance/lib/service";
 import { WritableError, assertWritable } from "../lib/billing/quota";
 
-const url =
-  process.env.DATABASE_URL_UNPOOLED ??
-  process.env.DIRECT_URL ??
-  process.env.DATABASE_URL;
-if (!url) throw new Error("DATABASE_URL required");
-
 const pool = createTestPool();
-const slug = `p5-${randomUUID().slice(0, 8)}`;
-const ownerUser = `owner-${randomUUID()}`;
+let tenantId = "";
+let ownerUser = "";
 const teacherUser = `teacher-${randomUUID()}`;
 
 describe("Phase 5 attendance", () => {
-  let tenantId = "";
   let classId = "";
   let studentId = "";
 
   before(async () => {
-    const created = await pool.query<{ app_create_tenant_with_owner: string }>(
-      `SELECT app_create_tenant_with_owner($1, $2, $3, 'Asia/Colombo') AS app_create_tenant_with_owner`,
-      [slug, "Phase 5 Institute", ownerUser],
-    );
-    tenantId = created.rows[0]!.app_create_tenant_with_owner;
+    const t = await createTestTenant(pool);
+    tenantId = t.tenantId;
+    ownerUser = t.ownerUserId;
 
     await withTenant({ tenantId, userId: ownerUser }, async (tx) => {
       await tx.execute(sql`
@@ -63,8 +55,7 @@ describe("Phase 5 attendance", () => {
   });
 
   after(async () => {
-    if (tenantId) {
-      await withTenant({ tenantId, userId: ownerUser }, async (tx) => {
+    await withTenant({ tenantId, userId: ownerUser }, async (tx) => {
         await tx.execute(sql`DELETE FROM attendance_edits`);
         await tx.execute(sql`DELETE FROM attendance`);
         await tx.execute(sql`DELETE FROM class_sessions`);
@@ -86,7 +77,6 @@ describe("Phase 5 attendance", () => {
       await pool.query(`UPDATE tenants SET deleted_at = now() WHERE id = $1`, [
         tenantId,
       ]);
-    }
     await pool.end();
   });
 

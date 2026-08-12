@@ -89,8 +89,7 @@ describe("PayHere hash", () => {
 
 describe("subscription transitions", () => {
   it("activates to active after payment", () => {
-    assert.equal(statusAfterSuccessfulPayment("trialing"), "active");
-    assert.equal(statusAfterSuccessfulPayment("past_due"), "active");
+    assert.equal(statusAfterSuccessfulPayment(), "active");
   });
 
   it("trial expiry enters past_due with grace", () => {

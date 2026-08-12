@@ -284,7 +284,7 @@ async function activateSubscription(
   await tx
     .update(subscriptions)
     .set({
-      status: statusAfterSuccessfulPayment("past_due"),
+      status: statusAfterSuccessfulPayment(),
       planKey: opts.planKey,
       billingCycle: opts.billingCycle,
       provider: opts.provider,

@@ -1,21 +1,12 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { config } from "dotenv";
 import { after, before, describe, it } from "node:test";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { sql } from "drizzle-orm";
 import * as schema from "../lib/db/schema";
 import { auditLog, events, memberships } from "../lib/db/schema";
 import { createTestPool } from "./helpers/db-pool";
-
-config({ path: ".env" });
-const url =
-  process.env.DATABASE_URL_UNPOOLED ??
-  process.env.DIRECT_URL ??
-  process.env.DATABASE_URL;
-if (!url) {
-  throw new Error("DATABASE_URL_UNPOOLED or DATABASE_URL required for RLS tests");
-}
+import { createTestTenant } from "./helpers/test-tenant";
 
 const pool = createTestPool();
 const db = drizzle(pool, { schema });
@@ -38,27 +29,17 @@ async function withTenantLocal<T>(
   });
 }
 
-const slugA = `rls-a-${randomUUID().slice(0, 8)}`;
-const slugB = `rls-b-${randomUUID().slice(0, 8)}`;
+let tenantA = "";
+let tenantB = "";
 const userA = `user-a-${randomUUID()}`;
 const userB = `user-b-${randomUUID()}`;
 
 describe("RLS tenant isolation", () => {
-  let tenantA = "";
-  let tenantB = "";
-
   before(async () => {
-    // Ensure foundation migrations applied — use SECURITY DEFINER helpers if present
-    const a = await pool.query<{ id: string }>(
-      `INSERT INTO tenants (slug, name) VALUES ($1, $2) RETURNING id`,
-      [slugA, "Tenant A"],
-    );
-    const b = await pool.query<{ id: string }>(
-      `INSERT INTO tenants (slug, name) VALUES ($1, $2) RETURNING id`,
-      [slugB, "Tenant B"],
-    );
-    tenantA = a.rows[0]!.id;
-    tenantB = b.rows[0]!.id;
+    const a = await createTestTenant(pool);
+    const b = await createTestTenant(pool);
+    tenantA = a.tenantId;
+    tenantB = b.tenantId;
 
     await withTenantLocal({ tenantId: tenantA, userId: userA }, async (tx) => {
       await tx.insert(memberships).values({

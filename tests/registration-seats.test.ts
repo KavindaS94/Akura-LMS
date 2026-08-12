@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, before, describe, it } from "node:test";
-import { createTestPool } from "./helpers/db-pool";
 import { sql } from "drizzle-orm";
 import { withTenant } from "../lib/db/tenant";
 import {
@@ -11,30 +10,21 @@ import {
 } from "../capabilities/students/lib/service";
 import { getUsageSnapshot, QuotaError } from "../lib/billing/quota";
 import { studentApplications } from "../lib/db/schema";
-
-const url =
-  process.env.DATABASE_URL_UNPOOLED ??
-  process.env.DIRECT_URL ??
-  process.env.DATABASE_URL;
-if (!url) throw new Error("DATABASE_URL required");
+import { createTestPool } from "./helpers/db-pool";
+import { createTestTenant } from "./helpers/test-tenant";
 
 const pool = createTestPool();
-const slug = `p4-${randomUUID().slice(0, 8)}`;
-const ownerUser = `owner-${randomUUID()}`;
+let tenantId = "";
+let ownerUser = "";
 
 describe("Phase 4 registration & seats", () => {
-  let tenantId = "";
   let applicationId = "";
 
   before(async () => {
-    const created = await pool.query<{ app_create_tenant_with_owner: string }>(
-      `SELECT app_create_tenant_with_owner($1, $2, $3, 'Asia/Colombo') AS app_create_tenant_with_owner`,
-      [slug, "Phase 4 Institute", ownerUser],
-    );
-    tenantId = created.rows[0]!.app_create_tenant_with_owner;
+    const t = await createTestTenant(pool);
+    tenantId = t.tenantId;
+    ownerUser = t.ownerUserId;
 
-    // Cap students at 1 for this tenant's growth plan limits override via usage near limit
-    // Use free plan limits by switching plan key for test
     await withTenant({ tenantId, userId: ownerUser }, async (tx) => {
       await tx.execute(
         sql`UPDATE subscriptions SET plan_key = 'free' WHERE tenant_id = ${tenantId}::uuid`,
@@ -43,29 +33,27 @@ describe("Phase 4 registration & seats", () => {
   });
 
   after(async () => {
-    if (tenantId) {
-      await withTenant({ tenantId, userId: ownerUser }, async (tx) => {
-        await tx.execute(sql`DELETE FROM class_enrolments`);
-        await tx.execute(sql`DELETE FROM guardians`);
-        await tx.execute(sql`DELETE FROM students`);
-        await tx.execute(sql`DELETE FROM student_applications`);
-        await tx.execute(sql`DELETE FROM registration_links`);
-        await tx.execute(sql`DELETE FROM classes`);
-        await tx.execute(sql`DELETE FROM subjects`);
-        await tx.execute(sql`DELETE FROM setting_history`);
-        await tx.execute(sql`DELETE FROM tenant_settings`);
-        await tx.execute(sql`DELETE FROM usage_events`);
-        await tx.execute(sql`DELETE FROM usage_counters`);
-        await tx.execute(sql`DELETE FROM subscriptions`);
-        await tx.execute(sql`DELETE FROM invitations`);
-        await tx.execute(sql`DELETE FROM audit_log`);
-        await tx.execute(sql`DELETE FROM events`);
-        await tx.execute(sql`DELETE FROM memberships`);
-      });
-      await pool.query(`UPDATE tenants SET deleted_at = now() WHERE id = $1`, [
-        tenantId,
-      ]);
-    }
+    await withTenant({ tenantId, userId: ownerUser }, async (tx) => {
+      await tx.execute(sql`DELETE FROM class_enrolments`);
+      await tx.execute(sql`DELETE FROM guardians`);
+      await tx.execute(sql`DELETE FROM students`);
+      await tx.execute(sql`DELETE FROM student_applications`);
+      await tx.execute(sql`DELETE FROM registration_links`);
+      await tx.execute(sql`DELETE FROM classes`);
+      await tx.execute(sql`DELETE FROM subjects`);
+      await tx.execute(sql`DELETE FROM setting_history`);
+      await tx.execute(sql`DELETE FROM tenant_settings`);
+      await tx.execute(sql`DELETE FROM usage_events`);
+      await tx.execute(sql`DELETE FROM usage_counters`);
+      await tx.execute(sql`DELETE FROM subscriptions`);
+      await tx.execute(sql`DELETE FROM invitations`);
+      await tx.execute(sql`DELETE FROM audit_log`);
+      await tx.execute(sql`DELETE FROM events`);
+      await tx.execute(sql`DELETE FROM memberships`);
+    });
+    await pool.query(`UPDATE tenants SET deleted_at = now() WHERE id = $1`, [
+      tenantId,
+    ]);
     await pool.end();
   });
 
@@ -102,7 +90,6 @@ describe("Phase 4 registration & seats", () => {
   });
 
   it("approval consumes a seat and respects quota", async () => {
-    // Fill free plan (30) almost — set counter to 30 then approve should fail
     await withTenant({ tenantId, userId: ownerUser }, async (tx) => {
       await tx.execute(
         sql`UPDATE usage_counters SET quantity = 30 WHERE metric = 'students'`,
@@ -119,7 +106,6 @@ describe("Phase 4 registration & seats", () => {
       QuotaError,
     );
 
-    // Still pending, still no extra seat from failed approve
     assert.equal(await countPendingApplications(tenantId, ownerUser), 1);
 
     await withTenant({ tenantId, userId: ownerUser }, async (tx) => {

@@ -372,13 +372,14 @@ export async function submitPublicApplicationAction(
   });
   if (!parsed.success) return { error: "Check the form and try again." };
 
+  const linkRow = z.object({
+    id: z.string().uuid(),
+    collect_guardian: z.boolean(),
+  });
   const linkRes = await db.execute(
     sql`SELECT id, collect_guardian FROM app_resolve_registration_link(${parsed.data.token})`,
   );
-  const link = rowsOf<{
-    id: string;
-    collect_guardian: boolean;
-  }>(linkRes)[0];
+  const link = linkRow.parse(rowsOf(linkRes)[0]);
   if (!link) return { error: "Registration link not found." };
 
   if (link.collect_guardian && !parsed.data.guardianName) {

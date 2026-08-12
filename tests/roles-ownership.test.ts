@@ -11,31 +11,22 @@ import {
 } from "../lib/tenant/ownership";
 import { withTenant } from "../lib/db/tenant";
 import { createTestPool } from "./helpers/db-pool";
-
-const url =
-  process.env.DATABASE_URL_UNPOOLED ??
-  process.env.DIRECT_URL ??
-  process.env.DATABASE_URL;
-if (!url) throw new Error("DATABASE_URL required");
+import { createTestTenant } from "./helpers/test-tenant";
 
 const pool = createTestPool();
-
-const slug = `p2-${randomUUID().slice(0, 8)}`;
-const ownerUser = `owner-${randomUUID()}`;
+let tenantId = "";
+let ownerUser = "";
 const adminUser = `admin-${randomUUID()}`;
 const teacherUser = `teacher-${randomUUID()}`;
 
 describe("Phase 2 roles & ownership", () => {
-  let tenantId = "";
   let ownerMembershipId = "";
   let adminMembershipId = "";
 
   before(async () => {
-    const created = await pool.query<{ app_create_tenant_with_owner: string }>(
-      `SELECT app_create_tenant_with_owner($1, $2, $3, 'Asia/Colombo') AS app_create_tenant_with_owner`,
-      [slug, "Phase 2 Institute", ownerUser],
-    );
-    tenantId = created.rows[0]!.app_create_tenant_with_owner;
+    const t = await createTestTenant(pool);
+    tenantId = t.tenantId;
+    ownerUser = t.ownerUserId;
 
     await withTenant({ tenantId, userId: ownerUser }, async (tx) => {
       const [admin] = await tx
@@ -74,17 +65,15 @@ describe("Phase 2 roles & ownership", () => {
   });
 
   after(async () => {
-    if (tenantId) {
-      await withTenant({ tenantId, userId: ownerUser }, async (tx) => {
-        await tx.execute(sql`DELETE FROM invitations`);
-        await tx.execute(sql`DELETE FROM audit_log`);
-        await tx.execute(sql`DELETE FROM events`);
-        await tx.execute(sql`DELETE FROM memberships`);
-      });
-      await pool.query(`UPDATE tenants SET deleted_at = now() WHERE id = $1`, [
-        tenantId,
-      ]);
-    }
+    await withTenant({ tenantId, userId: ownerUser }, async (tx) => {
+      await tx.execute(sql`DELETE FROM invitations`);
+      await tx.execute(sql`DELETE FROM audit_log`);
+      await tx.execute(sql`DELETE FROM events`);
+      await tx.execute(sql`DELETE FROM memberships`);
+    });
+    await pool.query(`UPDATE tenants SET deleted_at = now() WHERE id = $1`, [
+      tenantId,
+    ]);
     await pool.end();
   });
 

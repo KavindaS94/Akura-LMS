@@ -32,10 +32,7 @@ export function nextPeriodEnd(
 }
 
 /** After a successful payment (PayHere or confirmed bank). */
-export function statusAfterSuccessfulPayment(
-  _current: SubscriptionStatus,
-): "active" {
-  void _current;
+export function statusAfterSuccessfulPayment(): "active" {
   return "active";
 }
 

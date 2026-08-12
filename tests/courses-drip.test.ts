@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, before, describe, it } from "node:test";
 import { createTestPool } from "./helpers/db-pool";
+import { createTestTenant } from "./helpers/test-tenant";
 import { sql } from "drizzle-orm";
 import { withTenant } from "../lib/db/tenant";
 import { classes, modules } from "../lib/db/schema";
@@ -21,29 +22,20 @@ import {
 import { QuotaError } from "../lib/billing/quota";
 import { setSetting } from "../lib/settings";
 
-const url =
-  process.env.DATABASE_URL_UNPOOLED ??
-  process.env.DIRECT_URL ??
-  process.env.DATABASE_URL;
-if (!url) throw new Error("DATABASE_URL required");
-
 const pool = createTestPool();
-const slug = `p7-${randomUUID().slice(0, 8)}`;
-const ownerUser = `owner-${randomUUID()}`;
+let tenantId = "";
+let ownerUser = "";
 const teacherA = `teacher-a-${randomUUID()}`;
 const teacherB = `teacher-b-${randomUUID()}`;
 
 describe("Phase 7 courses & drip", () => {
-  let tenantId = "";
   let classId = "";
   let studentId = "";
 
   before(async () => {
-    const created = await pool.query<{ app_create_tenant_with_owner: string }>(
-      `SELECT app_create_tenant_with_owner($1, $2, $3, 'Asia/Colombo') AS app_create_tenant_with_owner`,
-      [slug, "Phase 7 Institute", ownerUser],
-    );
-    tenantId = created.rows[0]!.app_create_tenant_with_owner;
+    const t = await createTestTenant(pool);
+    tenantId = t.tenantId;
+    ownerUser = t.ownerUserId;
 
     await withTenant({ tenantId, userId: ownerUser }, async (tx) => {
       await tx.execute(sql`
@@ -80,8 +72,7 @@ describe("Phase 7 courses & drip", () => {
   });
 
   after(async () => {
-    if (tenantId) {
-      await withTenant({ tenantId, userId: ownerUser }, async (tx) => {
+    await withTenant({ tenantId, userId: ownerUser }, async (tx) => {
         await tx.execute(sql`DELETE FROM resource_views`);
         await tx.execute(sql`DELETE FROM resources`);
         await tx.execute(sql`DELETE FROM modules`);
@@ -103,7 +94,6 @@ describe("Phase 7 courses & drip", () => {
       await pool.query(`UPDATE tenants SET deleted_at = now() WHERE id = $1`, [
         tenantId,
       ]);
-    }
     await pool.end();
   });
 
