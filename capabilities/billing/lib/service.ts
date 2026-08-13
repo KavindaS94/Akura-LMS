@@ -383,12 +383,16 @@ export async function applySuccessfulPayment(opts: {
     },
   );
 }
-
 export async function handlePayHereNotify(form: Record<string, string>) {
   const merchantSecret = process.env.PAYHERE_MERCHANT_SECRET;
   const merchantId = process.env.PAYHERE_MERCHANT_ID;
+
   if (!merchantSecret || !merchantId) {
     throw new BillingError("PayHere not configured");
+  }
+
+  if (form.merchant_id && form.merchant_id !== merchantId) {
+    throw new BillingError("Merchant ID mismatch");
   }
 
   const orderId = form.order_id;
@@ -399,7 +403,7 @@ export async function handlePayHereNotify(form: Record<string, string>) {
   }
 
   const ok = verifyPayHereNotification({
-    merchantId: form.merchant_id || merchantId,
+    merchantId,
     orderId,
     payhereAmount: form.payhere_amount,
     payhereCurrency: form.payhere_currency,
@@ -419,8 +423,21 @@ export async function handlePayHereNotify(form: Record<string, string>) {
     status: string;
     plan_key: string;
     billing_cycle: Cycle;
+    amount_minor: number;
+    currency: string;
   }>(found)[0];
   if (!payment) throw new BillingError("Unknown order_id");
+
+  // Reject notifications whose signed amount/currency do not match the order.
+  if (form.payhere_amount && form.payhere_currency) {
+    const amountOk =
+      formatPayHereAmount(payment.amount_minor) === form.payhere_amount;
+    const currencyOk =
+      payment.currency.toUpperCase() === form.payhere_currency.toUpperCase();
+    if (!amountOk || !currencyOk) {
+      throw new BillingError("Amount or currency mismatch");
+    }
+  }
 
   const mapped = mapPayHereStatusCode(Number(statusCode));
   const recStatus = form.item_rec_status;
@@ -436,9 +453,12 @@ export async function handlePayHereNotify(form: Record<string, string>) {
     return { ok: true, action: "activated" as const };
   }
 
-  // Recurring failure on an existing subscription
+  // Recurring failure on an existing subscription. item_rec_status is only
+  // present on recurring notifications — a failed first checkout must not
+  // push a (possibly trialing) subscription into dunning.
   if (
     payment.subscription_id &&
+    recStatus &&
     (recStatus === "-2" || recStatus === "-3" || mapped === "failed")
   ) {
     await withTenant(

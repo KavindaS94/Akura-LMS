@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { sessionCookieOptions } from "@/lib/auth/cookies";
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -13,6 +14,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   const supabase = createServerClient(url, key, {
+    cookieOptions: sessionCookieOptions,
     cookies: {
       getAll() {
         return request.cookies.getAll();
@@ -28,6 +30,8 @@ export async function updateSession(request: NextRequest) {
             domain: undefined,
             sameSite: "lax",
             path: "/",
+            secure: true,
+            httpOnly: true,
           });
         });
       },

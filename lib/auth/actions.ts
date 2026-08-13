@@ -299,6 +299,10 @@ export async function acceptInviteAction(
     return { error: "Authentication failed." };
   }
 
+  if (user.email.toLowerCase() !== invite.email.toLowerCase()) {
+    return { error: "Use the email address this invite was sent to." };
+  }
+
   try {
     await db.execute(
       sql`SELECT app_accept_invitation(

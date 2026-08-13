@@ -379,10 +379,10 @@ export async function submitPublicApplicationAction(
   const linkRes = await db.execute(
     sql`SELECT id, collect_guardian FROM app_resolve_registration_link(${parsed.data.token})`,
   );
-  const link = linkRow.parse(rowsOf(linkRes)[0]);
-  if (!link) return { error: "Registration link not found." };
+  const link = linkRow.safeParse(rowsOf(linkRes)[0]);
+  if (!link.success) return { error: "Registration link not found." };
 
-  if (link.collect_guardian && !parsed.data.guardianName) {
+  if (link.data.collect_guardian && !parsed.data.guardianName) {
     return { error: "Guardian name is required." };
   }
 
@@ -411,13 +411,17 @@ export async function submitPublicApplicationAction(
   }
   if (!user) return { error: "Authentication failed." };
 
+  if (user.email.toLowerCase() !== parsed.data.email.toLowerCase()) {
+    return { error: "Use the email address you signed up with." };
+  }
+
   const h = await headers();
   const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
 
   try {
     await db.execute(
       sql`SELECT app_submit_student_application(
-        ${link.id}::uuid,
+        ${link.data.id}::uuid,
         ${user.id},
         ${parsed.data.fullName},
         ${parsed.data.email},

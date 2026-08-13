@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { sessionCookieOptions } from "@/lib/auth/cookies";
 
 export async function createClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -11,6 +12,7 @@ export async function createClient() {
   const cookieStore = await cookies();
 
   return createServerClient(url, key, {
+    cookieOptions: sessionCookieOptions,
     cookies: {
       getAll() {
         return cookieStore.getAll();
@@ -24,6 +26,8 @@ export async function createClient() {
               domain: undefined,
               sameSite: "lax",
               path: "/",
+              secure: true,
+              httpOnly: true,
             });
           });
         } catch {
