@@ -1,12 +1,2 @@
 {
-  "crons": [
-    {
-      "path": "/api/cron/process-events",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/cron/billing-lifecycle",
-      "schedule": "0 * * * *"
-    }
-  ]
 }
