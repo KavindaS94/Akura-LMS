@@ -32,6 +32,73 @@ function PayHereRedirect({ state }: { state: BillingFormState }) {
   );
 }
 
+type DiagnosticsResult = {
+  configured: boolean;
+  checkoutUrl: string;
+  notifyUrl: string | null;
+  allChecksPassed: boolean;
+  checks: { name: string; ok: boolean; detail: string }[];
+  error?: string;
+};
+
+function PayHereDiagnostics({ slug }: { slug: string }) {
+  const [result, setResult] = useState<DiagnosticsResult | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function run() {
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `/api/health/payhere?slug=${encodeURIComponent(slug)}`,
+        { cache: "no-store" },
+      );
+      setResult((await res.json()) as DiagnosticsResult);
+    } catch {
+      setResult(null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="mt-4 border-t border-ink/10 pt-4">
+      <Button type="button" variant="ghost" size="sm" onClick={run} disabled={loading}>
+        {loading ? "Checking…" : "Check PayHere configuration"}
+      </Button>
+      {result?.error ? (
+        <div className="mt-3">
+          <Alert tone="error">{result.error}</Alert>
+        </div>
+      ) : null}
+      {result && !result.error ? (
+        <div className="mt-3 space-y-2">
+          <ul className="space-y-1.5 text-sm">
+            {result.checks.map((c) => (
+              <li key={c.name} className="flex gap-2">
+                <span className={c.ok ? "text-success" : "text-danger"}>
+                  {c.ok ? "✓" : "✕"}
+                </span>
+                <span>
+                  <code className="text-xs text-ink">{c.name}</code>
+                  <span className="ml-2 text-muted">{c.detail}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs break-all text-muted">
+            Checkout: <code className="text-ink/70">{result.checkoutUrl}</code>
+          </p>
+          {result.notifyUrl ? (
+            <p className="text-xs break-all text-muted">
+              notify_url: <code className="text-ink/70">{result.notifyUrl}</code>
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function OwnerBillingPanel({
   slug,
   cancelAtPeriodEnd,
@@ -92,6 +159,7 @@ export function OwnerBillingPanel({
             <Alert tone="error">{checkoutState.error}</Alert>
           </div>
         ) : null}
+        <PayHereDiagnostics slug={slug} />
       </Card>
 
       <Card title="Bank transfer" description="Submit your reference after transferring.">

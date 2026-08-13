@@ -69,54 +69,44 @@ export default function HomePage() {
         </div>
       </header>
 
-      <section className="mx-auto max-w-6xl px-6 pt-20 pb-16 sm:pt-28">
-        <div className="mx-auto max-w-3xl text-center">
-          <p className="text-sm font-medium tracking-[0.2em] text-accent uppercase">
-            For tuition institutes & private schools
-          </p>
-          <h1
-            className="mt-5 text-4xl font-semibold tracking-tight text-ink sm:text-6xl"
-            style={{ fontFamily: "var(--font-display), serif" }}
-          >
-            Every institute deserves its own learning platform
-          </h1>
-          <p className="mx-auto mt-6 max-w-xl text-lg text-muted">
-            Akura brings attendance, exams, courses, and guardian email together in one
-            white-label workspace — scaled to your capacity, never your features.
-          </p>
-          <div className="mt-10 flex flex-wrap justify-center gap-4">
-            <Link
-              href="/signup"
-              className="rounded-lg bg-accent px-6 py-3 text-sm font-medium text-white shadow-sm transition-all hover:bg-accent/90 hover:shadow"
+      <section
+        className="relative overflow-hidden"
+        style={{
+          backgroundImage: "url('/landing-bg.svg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      >
+        <div className="absolute inset-0 bg-surface/30" aria-hidden />
+        <div className="relative mx-auto max-w-6xl px-6 pt-24 pb-20 sm:pt-32 sm:pb-24">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="text-sm font-medium tracking-[0.2em] text-accent uppercase">
+              For tuition institutes & private schools
+            </p>
+            <h1
+              className="mt-5 text-4xl font-semibold tracking-tight text-ink sm:text-6xl"
+              style={{ fontFamily: "var(--font-display), serif" }}
             >
-              Start your free trial
-            </Link>
-            <Link
-              href="/login"
-              className="rounded-lg border border-ink/15 bg-white px-6 py-3 text-sm font-medium text-ink shadow-sm transition-colors hover:border-ink/30"
-            >
-              Sign in
-            </Link>
-          </div>
-        </div>
-
-        <div className="mx-auto mt-16 max-w-3xl rounded-2xl border border-ink/10 bg-white p-8 shadow-sm">
-          <div className="flex items-center gap-2 pb-4">
-            <span className="h-3 w-3 rounded-full bg-danger/70" />
-            <span className="h-3 w-3 rounded-full bg-amber-400" />
-            <span className="h-3 w-3 rounded-full bg-success/70" />
-          </div>
-          <div className="grid gap-2 sm:grid-cols-3">
-            {[
-              ["Students", "128"],
-              ["Today's sessions", "4"],
-              ["Attendance", "96%"],
-            ].map(([label, value]) => (
-              <div key={label} className="rounded-xl bg-surface px-4 py-5">
-                <p className="text-2xl font-semibold text-ink">{value}</p>
-                <p className="mt-1 text-xs text-muted">{label}</p>
-              </div>
-            ))}
+              Every institute deserves its own learning platform
+            </h1>
+            <p className="mx-auto mt-6 max-w-xl text-lg text-muted">
+              Akura brings attendance, exams, courses, and guardian email together in one
+              white-label workspace — scaled to your capacity, never your features.
+            </p>
+            <div className="mt-10 flex flex-wrap justify-center gap-4">
+              <Link
+                href="/signup"
+                className="rounded-lg bg-accent px-6 py-3 text-sm font-medium text-white shadow-sm transition-all hover:bg-accent/90 hover:shadow"
+              >
+                Start your free trial
+              </Link>
+              <Link
+                href="/login"
+                className="rounded-lg border border-ink/15 bg-white px-6 py-3 text-sm font-medium text-ink shadow-sm transition-colors hover:border-ink/30"
+              >
+                Sign in
+              </Link>
+            </div>
           </div>
         </div>
       </section>

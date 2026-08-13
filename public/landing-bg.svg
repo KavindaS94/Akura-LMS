@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 820" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F7F8FB"/>
+      <stop offset="55%" stop-color="#F2F4F9"/>
+      <stop offset="100%" stop-color="#EDEFF4"/>
+    </linearGradient>
+    <radialGradient id="orbAccent" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#E4761B" stop-opacity="0.28"/>
+      <stop offset="45%" stop-color="#E4761B" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="#E4761B" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="orbInk" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#101828" stop-opacity="0.16"/>
+      <stop offset="55%" stop-color="#101828" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#101828" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="orbSoft" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#2E9E6B" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="#2E9E6B" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="dots" width="34" height="34" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.4" fill="#101828" fill-opacity="0.07"/>
+    </pattern>
+    <pattern id="grid" width="72" height="72" patternUnits="userSpaceOnUse">
+      <path d="M72 0H0V72" fill="none" stroke="#101828" stroke-opacity="0.035" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1440" height="820" fill="url(#bg)"/>
+  <rect width="1440" height="820" fill="url(#grid)"/>
+
+  <!-- soft orbs -->
+  <circle cx="240" cy="120" r="420" fill="url(#orbAccent)"/>
+  <circle cx="1220" cy="620" r="480" fill="url(#orbInk)"/>
+  <circle cx="1210" cy="130" r="360" fill="url(#orbSoft)"/>
+  <circle cx="180" cy="700" r="300" fill="url(#orbSoft)"/>
+
+  <rect width="1440" height="820" fill="url(#dots)" opacity="0.7"/>
+
+  <!-- concentric rings, top right -->
+  <g fill="none" stroke="#E4761B" stroke-opacity="0.16">
+    <circle cx="1230" cy="180" r="170" stroke-dasharray="2 7"/>
+    <circle cx="1230" cy="180" r="120" stroke-opacity="0.10"/>
+    <circle cx="1230" cy="180" r="70" stroke-dasharray="4 6" stroke-opacity="0.22"/>
+  </g>
+
+  <!-- accent arc, top left -->
+  <path d="M60 300 a300 300 0 0 1 150 -150" fill="none" stroke="#E4761B" stroke-opacity="0.22" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- dotted diagonal sweep -->
+  <g fill="#E4761B">
+    <g fill-opacity="0.30">
+      <circle cx="1050" cy="560" r="6"/>
+      <circle cx="1100" cy="600" r="4.5"/>
+      <circle cx="1155" cy="630" r="3.5"/>
+      <circle cx="1215" cy="650" r="5"/>
+      <circle cx="1280" cy="662" r="3"/>
+    </g>
+    <g fill-opacity="0.18">
+      <circle cx="1102" cy="548" r="3"/>
+      <circle cx="1160" cy="575" r="2.5"/>
+      <circle cx="1225" cy="595" r="3.5"/>
+      <circle cx="1295" cy="610" r="2.5"/>
+    </g>
+  </g>
+
+  <!-- floating rounded squares, bottom left -->
+  <g fill="#FFFFFF" stroke="#E4761B" stroke-opacity="0.25">
+    <rect x="120" y="600" width="64" height="64" rx="16" stroke-width="1.5" transform="rotate(-8 152 632)"/>
+    <rect x="210" y="640" width="40" height="40" rx="10" stroke-width="1.2" transform="rotate(12 230 660)" stroke-opacity="0.18"/>
+  </g>
+
+  <!-- subtle bottom fade to surface -->
+  <rect x="0" y="640" width="1440" height="180" fill="url(#bg)" opacity="0.55"/>
+</svg>
