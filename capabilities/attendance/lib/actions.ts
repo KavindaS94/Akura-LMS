@@ -29,12 +29,14 @@ export async function openTodaySessionAction(
   slug: string,
   classId: string,
 ): Promise<AttendanceFormState> {
+  const parsed = z.string().uuid().safeParse(classId);
+  if (!parsed.success) return { error: "Invalid class id." };
   const ctx = await requireRole(slug, TEACHER_ROLES);
   try {
     const session = await openOrGetTodaySession({
       tenantId: ctx.tenantId,
       userId: ctx.user.id,
-      classId,
+      classId: parsed.data,
     });
     return { ok: "Session ready", sessionId: session.id };
   } catch (err) {
@@ -96,18 +98,30 @@ export async function loadAttendanceReportPage(
   from: string,
   to: string,
 ) {
+  const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+  const parsed = z
+    .object({ classId: z.string().uuid(), from: date, to: date })
+    .safeParse({ classId, from, to });
+  if (!parsed.success) {
+    return {
+      ctx: null,
+      report: { sessions: [], students: [], eligibilityPct: 0 },
+      sessions: [],
+    };
+  }
+
   const ctx = await requireRole(slug, TEACHER_ROLES);
   const report = await buildAttendanceReport({
     tenantId: ctx.tenantId,
     userId: ctx.user.id,
-    classId,
-    from: new Date(from),
-    to: new Date(to),
+    classId: parsed.data.classId,
+    from: new Date(`${parsed.data.from}T00:00:00Z`),
+    to: new Date(`${parsed.data.to}T23:59:59Z`),
   });
   const sessions = await listRecentSessions({
     tenantId: ctx.tenantId,
     userId: ctx.user.id,
-    classId,
+    classId: parsed.data.classId,
   });
   return { ctx, report, sessions };
 }

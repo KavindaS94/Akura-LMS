@@ -12,8 +12,7 @@ import {
   type ClassSession,
 } from "@/lib/db/schema";
 import { withTenant, type Tx } from "@/lib/db/tenant";
-import { rowsOf } from "@/lib/db/result";
-import { getSetting } from "@/lib/settings";
+import { getSetting, getSettingInTx } from "@/lib/settings";
 
 export class AttendanceError extends Error {
   constructor(message: string) {
@@ -305,17 +304,7 @@ async function isSessionLockedOuter(
   userId: string,
   session: ClassSession,
 ) {
-  // Read lock hours inside same txn via settings table / default 48
-  const override = await tx.execute(
-    sql`SELECT value FROM tenant_settings WHERE tenant_id = ${tenantId}::uuid AND key = 'attendance.lock_hours' LIMIT 1`,
-  );
-  const def = await tx.execute(
-    sql`SELECT default_value FROM setting_definitions WHERE key = 'attendance.lock_hours' LIMIT 1`,
-  );
-  const raw =
-    rowsOf<{ value: unknown }>(override)[0]?.value ??
-    rowsOf<{ default_value: unknown }>(def)[0]?.default_value ??
-    48;
+  const raw = await getSettingInTx<number>(tx, tenantId, "attendance.lock_hours");
   const hours = typeof raw === "number" ? raw : Number(raw);
   void userId;
   return Date.now() - session.createdAt.getTime() > hours * 60 * 60 * 1000;
@@ -361,15 +350,12 @@ export async function buildAttendanceReport(opts: {
   return withTenant(
     { tenantId: opts.tenantId, userId: opts.userId },
     async (tx) => {
-      const threshold = await tx.execute(
-        sql`SELECT COALESCE(
-          (SELECT value FROM tenant_settings WHERE tenant_id = ${opts.tenantId}::uuid AND key = 'attendance.eligibility_threshold_pct'),
-          (SELECT default_value FROM setting_definitions WHERE key = 'attendance.eligibility_threshold_pct')
-        ) AS value`,
+      const threshold = await getSettingInTx<number>(
+        tx,
+        opts.tenantId,
+        "attendance.eligibility_threshold_pct",
       );
-      const eligibilityPct = Number(
-        rowsOf<{ value: unknown }>(threshold)[0]?.value ?? 80,
-      );
+      const eligibilityPct = Number(threshold);
 
       const sessions = await tx
         .select()

@@ -29,6 +29,7 @@ export async function sendEmail(opts: {
   subject: string;
   react: ReactElement;
   idempotencyKey?: string;
+  tags?: { name: string; value: string }[];
 }): Promise<{ id: string | null }> {
   if (!isResendConfigured()) {
     throw new EmailError("Resend is not configured");
@@ -41,6 +42,7 @@ export async function sendEmail(opts: {
       to: opts.to,
       subject: opts.subject,
       react: opts.react,
+      ...(opts.tags ? { tags: opts.tags } : {}),
     },
     opts.idempotencyKey
       ? { idempotencyKey: opts.idempotencyKey }

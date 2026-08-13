@@ -339,8 +339,10 @@ export async function publishExam(opts: {
     for (let i = 0; i < scored.length; i++) {
       const row = scored[i]!;
       const pct = percentage(row.score, maxMarks);
+      // Only the built-in "letter" scale is implemented. An unknown scale
+      // stores no letter rather than silently applying the wrong one.
       const letter =
-        !gradeScale || gradeScale === "letter" ? letterFromPercent(pct) : letterFromPercent(pct);
+        !gradeScale || gradeScale === "letter" ? letterFromPercent(pct) : null;
 
       await tx
         .update(marks)

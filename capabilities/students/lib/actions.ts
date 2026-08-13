@@ -192,11 +192,22 @@ export async function createClassAction(
   if (!parsed.success) return { error: "Enter a class name." };
   const ctx = await requireRole(slug, ADMIN_ROLES);
   await withTenant({ tenantId: ctx.tenantId, userId: ctx.user.id }, async (tx) => {
-    await tx.insert(classes).values({
+    const [created] = await tx
+      .insert(classes)
+      .values({
+        tenantId: ctx.tenantId,
+        name: parsed.data.name,
+        academicYear: parsed.data.academicYear || null,
+        teacherAuthUserId: parsed.data.teacherAuthUserId || null,
+      })
+      .returning();
+    await tx.insert(auditLog).values({
       tenantId: ctx.tenantId,
-      name: parsed.data.name,
-      academicYear: parsed.data.academicYear || null,
-      teacherAuthUserId: parsed.data.teacherAuthUserId || null,
+      actorUserId: ctx.user.id,
+      action: "class.created",
+      entityType: "class",
+      entityId: created!.id,
+      payload: { name: parsed.data.name },
     });
   });
   return { ok: "Class created." };
@@ -227,6 +238,14 @@ export async function assignClassTeacherAction(
       .where(
         and(eq(classes.id, parsed.data.classId), eq(classes.tenantId, ctx.tenantId)),
       );
+    await tx.insert(auditLog).values({
+      tenantId: ctx.tenantId,
+      actorUserId: ctx.user.id,
+      action: "class.teacher_assigned",
+      entityType: "class",
+      entityId: parsed.data.classId,
+      payload: { teacherAuthUserId: parsed.data.teacherAuthUserId },
+    });
   });
   return { ok: "Teacher assigned." };
 }
@@ -300,12 +319,15 @@ export async function approveApplicationAction(
   slug: string,
   applicationId: string,
 ): Promise<PeopleFormState> {
+  const parsed = z.string().uuid().safeParse(applicationId);
+  if (!parsed.success) return { error: "Invalid application id." };
+
   const ctx = await requireRole(slug, ADMIN_ROLES);
   try {
     await approveApplication({
       tenantId: ctx.tenantId,
       actorUserId: ctx.user.id,
-      applicationId,
+      applicationId: parsed.data,
     });
   } catch (err) {
     if (err instanceof QuotaError) {
@@ -323,11 +345,14 @@ export async function rejectApplicationAction(
   slug: string,
   applicationId: string,
 ): Promise<PeopleFormState> {
+  const parsed = z.string().uuid().safeParse(applicationId);
+  if (!parsed.success) return { error: "Invalid application id." };
+
   const ctx = await requireRole(slug, ADMIN_ROLES);
   await rejectApplication({
     tenantId: ctx.tenantId,
     actorUserId: ctx.user.id,
-    applicationId,
+    applicationId: parsed.data,
     reason: "Not admitted",
   });
   return { ok: "Application rejected." };

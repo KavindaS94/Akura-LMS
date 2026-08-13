@@ -88,14 +88,22 @@ export async function publishCourseAction(
   courseId: string,
   status: "draft" | "published",
 ): Promise<CourseFormState> {
+  const parsed = z
+    .object({
+      courseId: z.string().uuid(),
+      status: z.enum(["draft", "published"]),
+    })
+    .safeParse({ courseId, status });
+  if (!parsed.success) return { error: "Invalid course or status." };
+
   const ctx = await requireRole(slug, TEACHER_ROLES);
   try {
     await publishCourse({
       tenantId: ctx.tenantId,
       userId: ctx.user.id,
-      courseId,
+      courseId: parsed.data.courseId,
       isAdmin: ctx.membership.role === "admin",
-      status,
+      status: parsed.data.status,
     });
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Failed" };

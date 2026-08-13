@@ -77,29 +77,37 @@ function validateValue(def: SettingDefinition, value: unknown): unknown {
   }
 }
 
+export async function getSettingInTx<T = unknown>(
+  tx: Tx,
+  tenantId: string,
+  key: string,
+): Promise<T> {
+  const defRows = await tx
+    .select()
+    .from(settingDefinitions)
+    .where(eq(settingDefinitions.key, key))
+    .limit(1);
+  const def = defRows[0];
+  if (!def) throw new SettingsError(`Unknown setting: ${key}`);
+
+  const rows = await tx
+    .select()
+    .from(tenantSettings)
+    .where(and(eq(tenantSettings.tenantId, tenantId), eq(tenantSettings.key, key)))
+    .limit(1);
+
+  if (rows[0]) return rows[0].value as T;
+  return def.defaultValue as T;
+}
+
 export async function getSetting<T = unknown>(
   tenantId: string,
   userId: string,
   key: string,
 ): Promise<T> {
-  return withTenant({ tenantId, userId }, async (tx) => {
-    const defRows = await tx
-      .select()
-      .from(settingDefinitions)
-      .where(eq(settingDefinitions.key, key))
-      .limit(1);
-    const def = defRows[0];
-    if (!def) throw new SettingsError(`Unknown setting: ${key}`);
-
-    const rows = await tx
-      .select()
-      .from(tenantSettings)
-      .where(and(eq(tenantSettings.tenantId, tenantId), eq(tenantSettings.key, key)))
-      .limit(1);
-
-    if (rows[0]) return rows[0].value as T;
-    return def.defaultValue as T;
-  });
+  return withTenant({ tenantId, userId }, (tx) =>
+    getSettingInTx<T>(tx, tenantId, key),
+  );
 }
 
 export async function listTenantSettings(tenantId: string, userId: string) {

@@ -126,13 +126,16 @@ export async function cancelAtPeriodEndAction(
   slug: string,
   cancel: boolean,
 ): Promise<BillingFormState> {
+  const parsed = z.boolean().safeParse(cancel);
+  if (!parsed.success) return { error: "Invalid cancellation flag." };
+
   const ctx = await requireRole(slug, ADMIN_ROLES);
   try {
     requireOwner(ctx);
     await setCancelAtPeriodEnd({
       tenantId: ctx.tenantId,
       userId: ctx.user.id,
-      cancel,
+      cancel: parsed.data,
     });
     return {
       ok: cancel

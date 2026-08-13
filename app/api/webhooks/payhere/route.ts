@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import {
   handlePayHereNotify,
   BillingError,
@@ -6,6 +7,18 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const notifySchema = z.object({
+  merchant_id: z.string().optional(),
+  order_id: z.string().min(1),
+  payment_id: z.string().optional(),
+  payhere_amount: z.string().optional(),
+  payhere_currency: z.string().optional(),
+  status_code: z.string().min(1),
+  md5sig: z.string().min(1),
+  item_rec_status: z.string().optional(),
+  subscription_id: z.string().optional(),
+});
 
 /** PayHere notify_url — application/x-www-form-urlencoded */
 export async function POST(req: Request) {
@@ -23,6 +36,11 @@ export async function POST(req: Request) {
     }
   } catch {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+  }
+
+  const parsed = notifySchema.safeParse(form);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid notification payload" }, { status: 400 });
   }
 
   try {

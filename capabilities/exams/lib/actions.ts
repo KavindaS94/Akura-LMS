@@ -115,12 +115,15 @@ export async function publishExamAction(
   slug: string,
   examId: string,
 ): Promise<ExamFormState> {
+  const parsed = z.string().uuid().safeParse(examId);
+  if (!parsed.success) return { error: "Invalid exam id." };
+
   const ctx = await requireRole(slug, ADMIN_ROLES);
   try {
     await publishExam({
       tenantId: ctx.tenantId,
       userId: ctx.user.id,
-      examId,
+      examId: parsed.data,
       isAdmin: true,
     });
   } catch (err) {
@@ -149,11 +152,13 @@ export async function loadStudentResultsPage(slug: string) {
 }
 
 export async function loadExamsForClassAction(slug: string, classId: string) {
+  const parsed = z.string().uuid().safeParse(classId);
+  if (!parsed.success) return [];
   const ctx = await requireRole(slug, TEACHER_ROLES);
   const examList = await listExamsForClass({
     tenantId: ctx.tenantId,
     userId: ctx.user.id,
-    classId,
+    classId: parsed.data,
   });
   return examList;
 }

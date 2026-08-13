@@ -13,28 +13,7 @@ import { assertQuota, recordUsage, QuotaError } from "@/lib/billing/quota";
 import { sendEmail, isResendConfigured, EmailError } from "@/lib/email/client";
 import { AbsenceEmail } from "@/emails/absence";
 import { ResultsEmail } from "@/emails/results";
-import { settingDefinitions, tenantSettings } from "@/lib/db/schema";
-
-async function readSetting<T>(
-  tx: Tx,
-  tenantId: string,
-  key: string,
-): Promise<T> {
-  const def = await tx
-    .select()
-    .from(settingDefinitions)
-    .where(eq(settingDefinitions.key, key))
-    .limit(1);
-  if (!def[0]) throw new Error(`Unknown setting: ${key}`);
-  const override = await tx
-    .select()
-    .from(tenantSettings)
-    .where(
-      and(eq(tenantSettings.tenantId, tenantId), eq(tenantSettings.key, key)),
-    )
-    .limit(1);
-  return (override[0]?.value ?? def[0].defaultValue) as T;
-}
+import { getSettingInTx } from "@/lib/settings";
 
 export type GuardianRecipient = {
   email: string;
@@ -86,7 +65,7 @@ export async function handleAttendanceMarked(
     dryRun?: boolean;
   },
 ): Promise<{ sent: number; deferredReason?: string }> {
-  const enabled = await readSetting<boolean>(
+  const enabled = await getSettingInTx<boolean>(
     tx,
     opts.tenantId,
     "notifications.absence_email_enabled",
@@ -210,6 +189,7 @@ export async function handleAttendanceMarked(
           sessionDateLabel,
         }),
         idempotencyKey: `absence:${opts.tenantId}:${sessionId}:${batch.email}`,
+        tags: [{ name: "akura-tenant-id", value: opts.tenantId }],
       });
     }
     sent += 1;
@@ -236,7 +216,7 @@ export async function handleExamsPublished(
     dryRun?: boolean;
   },
 ): Promise<{ sent: number; deferredReason?: string }> {
-  const enabled = await readSetting<boolean>(
+  const enabled = await getSettingInTx<boolean>(
     tx,
     opts.tenantId,
     "notifications.results_email_enabled",
@@ -269,7 +249,11 @@ export async function handleExamsPublished(
     .from(marks)
     .innerJoin(students, eq(marks.studentId, students.id))
     .where(
-      and(eq(marks.examId, examId), eq(marks.tenantId, opts.tenantId)),
+      and(
+        eq(marks.examId, examId),
+        eq(marks.tenantId, opts.tenantId),
+        isNull(students.deletedAt),
+      ),
     );
 
   if (markRows.length === 0) return { sent: 0 };
@@ -342,6 +326,7 @@ export async function handleExamsPublished(
           scoreLabel: job.scoreLabel,
         }),
         idempotencyKey: `results:${examId}:${job.studentId}:${job.email.toLowerCase()}`,
+        tags: [{ name: "akura-tenant-id", value: opts.tenantId }],
       });
     }
     sent += 1;

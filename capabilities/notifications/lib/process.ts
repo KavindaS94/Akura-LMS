@@ -1,8 +1,8 @@
 import { sql } from "drizzle-orm";
-import { db } from "@/lib/db";
 import { rowsOf } from "@/lib/db/result";
 import { tenants } from "@/lib/db/schema";
 import { withTenant } from "@/lib/db/tenant";
+import { withCron } from "@/lib/db/cron";
 import { isInQuietHours } from "@/lib/email/quiet-hours";
 import { isResendConfigured } from "@/lib/email/client";
 import {
@@ -10,8 +10,8 @@ import {
   handleExamsPublished,
   QuotaError,
 } from "@/capabilities/notifications/lib/handlers";
-import { settingDefinitions, tenantSettings } from "@/lib/db/schema";
-import { and, eq } from "drizzle-orm";
+import { getSettingInTx } from "@/lib/settings";
+import { eq } from "drizzle-orm";
 
 export type PendingEvent = {
   id: string;
@@ -23,20 +23,26 @@ export type PendingEvent = {
 };
 
 export async function listPendingEvents(limit = 50): Promise<PendingEvent[]> {
-  const result = await db.execute(
-    sql`SELECT * FROM app_list_pending_events(${limit})`,
-  );
-  return rowsOf<PendingEvent>(result);
+  return withCron(async (tx) => {
+    const result = await tx.execute(
+      sql`SELECT * FROM app_list_pending_events(${limit})`,
+    );
+    return rowsOf<PendingEvent>(result);
+  });
 }
 
 async function markProcessed(id: string) {
-  await db.execute(sql`SELECT app_mark_event_processed(${id}::uuid)`);
+  await withCron(async (tx) => {
+    await tx.execute(sql`SELECT app_mark_event_processed(${id}::uuid)`);
+  });
 }
 
 async function markFailed(id: string, error: string) {
-  await db.execute(
-    sql`SELECT app_mark_event_failed(${id}::uuid, ${error})`,
-  );
+  await withCron(async (tx) => {
+    await tx.execute(
+      sql`SELECT app_mark_event_failed(${id}::uuid, ${error})`,
+    );
+  });
 }
 
 export type ProcessResult = {
@@ -45,27 +51,6 @@ export type ProcessResult = {
   failed: number;
   skipped: number;
 };
-
-async function readSettingInTx<T>(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  tx: any,
-  tenantId: string,
-  key: string,
-): Promise<T> {
-  const def = await tx
-    .select()
-    .from(settingDefinitions)
-    .where(eq(settingDefinitions.key, key))
-    .limit(1);
-  const override = await tx
-    .select()
-    .from(tenantSettings)
-    .where(
-      and(eq(tenantSettings.tenantId, tenantId), eq(tenantSettings.key, key)),
-    )
-    .limit(1);
-  return (override[0]?.value ?? def[0]?.defaultValue) as T;
-}
 
 /**
  * Process pending outbox events. Quiet hours defer without bumping attempts.
@@ -122,12 +107,12 @@ export async function processPendingEvents(
             .limit(1);
           const timezone = tenant?.timezone ?? "Asia/Colombo";
 
-          const quietStart = await readSettingInTx<string>(
+          const quietStart = await getSettingInTx<string>(
             tx,
             event.tenant_id,
             "notifications.quiet_hours_start",
           );
-          const quietEnd = await readSettingInTx<string>(
+          const quietEnd = await getSettingInTx<string>(
             tx,
             event.tenant_id,
             "notifications.quiet_hours_end",

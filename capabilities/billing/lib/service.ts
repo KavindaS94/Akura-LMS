@@ -10,6 +10,7 @@ import {
 import { db } from "@/lib/db";
 import { rowsOf } from "@/lib/db/result";
 import { withTenant, type Tx } from "@/lib/db/tenant";
+import { withCron } from "@/lib/db/cron";
 import {
   formatPayHereAmount,
   generatePayHereCheckoutHash,
@@ -277,6 +278,7 @@ async function activateSubscription(
     provider: string;
     providerSubscriptionId?: string | null;
     actorUserId?: string | null;
+    keepCancelAtPeriodEnd?: boolean;
   },
 ) {
   const now = new Date();
@@ -293,7 +295,9 @@ async function activateSubscription(
       currentPeriodEnd: periodEnd,
       graceEndsAt: null,
       trialEndsAt: null,
-      cancelAtPeriodEnd: false,
+      ...(opts.keepCancelAtPeriodEnd
+        ? {}
+        : { cancelAtPeriodEnd: false }),
       updatedAt: now,
     })
     .where(
@@ -324,6 +328,7 @@ export async function applySuccessfulPayment(opts: {
   providerSubscriptionId?: string | null;
   rawPayload?: Record<string, unknown>;
   actorUserId?: string | null;
+  isRecurring?: boolean;
 }) {
   return withTenant(
     { tenantId: opts.tenantId, userId: opts.actorUserId ?? "system" },
@@ -337,6 +342,7 @@ export async function applySuccessfulPayment(opts: {
             eq(payments.tenantId, opts.tenantId),
           ),
         )
+        .for("update")
         .limit(1);
       if (!payment) throw new BillingError("Payment not found.");
       if (payment.status === "paid") return { alreadyPaid: true as const };
@@ -368,14 +374,35 @@ export async function applySuccessfulPayment(opts: {
 
       const subId = payment.subscriptionId;
       if (subId) {
+        // A recurring success (renewal) must not overwrite the current plan
+        // with the checkout's (possibly superseded) plan, and must not clear
+        // a user's cancel-at-period-end intent. Fresh checkouts do both.
+        const [sub] = await tx
+          .select()
+          .from(subscriptions)
+          .where(
+            and(
+              eq(subscriptions.id, subId),
+              eq(subscriptions.tenantId, opts.tenantId),
+            ),
+          )
+          .limit(1);
+        const effectivePlanKey = opts.isRecurring
+          ? sub?.planKey ?? payment.planKey
+          : payment.planKey;
+        const effectiveCycle = opts.isRecurring
+          ? ((sub?.billingCycle ?? payment.billingCycle) as Cycle)
+          : (payment.billingCycle as Cycle);
+
         await activateSubscription(tx, {
           tenantId: opts.tenantId,
           subscriptionId: subId,
-          planKey: payment.planKey,
-          billingCycle: payment.billingCycle as Cycle,
+          planKey: effectivePlanKey,
+          billingCycle: effectiveCycle,
           provider: payment.method === "payhere" ? "payhere" : "bank",
           providerSubscriptionId: opts.providerSubscriptionId,
           actorUserId: opts.actorUserId,
+          keepCancelAtPeriodEnd: opts.isRecurring,
         });
       }
 
@@ -449,6 +476,7 @@ export async function handlePayHereNotify(form: Record<string, string>) {
       providerPaymentId: form.payment_id ?? null,
       providerSubscriptionId: form.subscription_id ?? form.payment_id ?? null,
       rawPayload: form,
+      isRecurring: Boolean(recStatus),
     });
     return { ok: true, action: "activated" as const };
   }
@@ -499,21 +527,31 @@ export async function handlePayHereNotify(form: Record<string, string>) {
   await withTenant(
     { tenantId: payment.tenant_id, userId: "system" },
     async (tx) => {
+      const status =
+        mapped === "canceled"
+          ? "canceled"
+          : mapped === "charged_back"
+            ? "charged_back"
+            : mapped === "pending"
+              ? "pending"
+              : "failed";
       await tx
         .update(payments)
         .set({
-          status:
-            mapped === "canceled"
-              ? "canceled"
-              : mapped === "charged_back"
-                ? "charged_back"
-                : mapped === "pending"
-                  ? "pending"
-                  : "failed",
+          status,
           rawPayload: form,
           updatedAt: new Date(),
         })
         .where(eq(payments.id, payment.id));
+
+      await tx.insert(auditLog).values({
+        tenantId: payment.tenant_id,
+        actorUserId: "system",
+        action: "billing.payment_status_changed",
+        entityType: "payment",
+        entityId: payment.id,
+        payload: { status, from: payment.status, provider: "payhere" },
+      });
     },
   );
 
@@ -536,11 +574,25 @@ export async function confirmBankTransferById(opts: {
   if (!transfer) throw new BillingError("Transfer not found");
   if (transfer.status === "confirmed") return { already: true };
 
-  await applySuccessfulPayment({
+  const result = await applySuccessfulPayment({
     tenantId: transfer.tenant_id,
     paymentId: transfer.payment_id,
     actorUserId: opts.confirmedBy,
   });
+
+  await withTenant(
+    { tenantId: transfer.tenant_id, userId: opts.confirmedBy },
+    async (tx) => {
+      await tx.insert(auditLog).values({
+        tenantId: transfer.tenant_id,
+        actorUserId: opts.confirmedBy,
+        action: "billing.bank_transfer_confirmed",
+        entityType: "bank_transfer",
+        entityId: transfer.id,
+        payload: { alreadyPaid: result.alreadyPaid },
+      });
+    },
+  );
   return { already: false };
 }
 
@@ -614,20 +666,22 @@ export async function downgradeToFree(opts: {
 }
 
 export async function runBillingLifecycle(limit = 100) {
-  const result = await db.execute(
-    sql`SELECT * FROM app_list_subscriptions_for_lifecycle(${limit})`,
-  );
-  const rows = rowsOf<{
-    id: string;
-    tenant_id: string;
-    plan_key: string;
-    status: string;
-    trial_ends_at: Date | null;
-    grace_ends_at: Date | null;
-    current_period_end: Date | null;
-    cancel_at_period_end: boolean;
-    read_only_since: Date | null;
-  }>(result);
+  const rows = await withCron(async (tx) => {
+    const result = await tx.execute(
+      sql`SELECT * FROM app_list_subscriptions_for_lifecycle(${limit})`,
+    );
+    return rowsOf<{
+      id: string;
+      tenant_id: string;
+      plan_key: string;
+      status: string;
+      trial_ends_at: Date | null;
+      grace_ends_at: Date | null;
+      current_period_end: Date | null;
+      cancel_at_period_end: boolean;
+      read_only_since: Date | null;
+    }>(result);
+  });
 
   const summary = { trialExpired: 0, graceExpired: 0, dormant: 0, canceled: 0 };
 
@@ -641,6 +695,30 @@ export async function runBillingLifecycle(limit = 100) {
           row.trial_ends_at &&
           new Date(row.trial_ends_at) < now
         ) {
+          if (row.cancel_at_period_end) {
+            await tx
+              .update(subscriptions)
+              .set({
+                status: "free",
+                planKey: "free",
+                cancelAtPeriodEnd: false,
+                provider: "none",
+                providerSubscriptionId: null,
+                updatedAt: now,
+              })
+              .where(eq(subscriptions.id, row.id));
+            await tx.insert(auditLog).values({
+              tenantId: row.tenant_id,
+              actorUserId: "system",
+              action: "billing.lifecycle_trial_canceled",
+              entityType: "subscription",
+              entityId: row.id,
+              payload: { from: "trialing", to: "free" },
+            });
+            summary.canceled += 1;
+            return;
+          }
+
           const next = statusAfterTrialExpired();
           await tx
             .update(subscriptions)
@@ -650,6 +728,14 @@ export async function runBillingLifecycle(limit = 100) {
               updatedAt: now,
             })
             .where(eq(subscriptions.id, row.id));
+          await tx.insert(auditLog).values({
+            tenantId: row.tenant_id,
+            actorUserId: "system",
+            action: "billing.lifecycle_trial_expired",
+            entityType: "subscription",
+            entityId: row.id,
+            payload: { from: "trialing", to: next.status },
+          });
           summary.trialExpired += 1;
           return;
         }
@@ -659,13 +745,22 @@ export async function runBillingLifecycle(limit = 100) {
           row.grace_ends_at &&
           new Date(row.grace_ends_at) < now
         ) {
+          const next = statusAfterGraceExpired();
           await tx
             .update(subscriptions)
             .set({
-              status: statusAfterGraceExpired(),
+              status: next,
               updatedAt: now,
             })
             .where(eq(subscriptions.id, row.id));
+          await tx.insert(auditLog).values({
+            tenantId: row.tenant_id,
+            actorUserId: "system",
+            action: "billing.lifecycle_grace_expired",
+            entityType: "subscription",
+            entityId: row.id,
+            payload: { from: "past_due", to: next },
+          });
           summary.graceExpired += 1;
           return;
         }
@@ -679,6 +774,14 @@ export async function runBillingLifecycle(limit = 100) {
             .update(subscriptions)
             .set({ status: "dormant", updatedAt: now })
             .where(eq(subscriptions.id, row.id));
+          await tx.insert(auditLog).values({
+            tenantId: row.tenant_id,
+            actorUserId: "system",
+            action: "billing.lifecycle_dormant",
+            entityType: "subscription",
+            entityId: row.id,
+            payload: { from: "read_only", to: "dormant" },
+          });
           summary.dormant += 1;
           return;
         }
@@ -700,6 +803,14 @@ export async function runBillingLifecycle(limit = 100) {
               updatedAt: now,
             })
             .where(eq(subscriptions.id, row.id));
+          await tx.insert(auditLog).values({
+            tenantId: row.tenant_id,
+            actorUserId: "system",
+            action: "billing.lifecycle_canceled_to_free",
+            entityType: "subscription",
+            entityId: row.id,
+            payload: { from: "active", to: "free" },
+          });
           summary.canceled += 1;
         }
       },

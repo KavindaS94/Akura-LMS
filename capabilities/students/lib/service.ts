@@ -69,6 +69,16 @@ export async function createStudentInTx(
   }
 
   if (opts.classId) {
+    const [klass] = await tx
+      .select({ id: classes.id })
+      .from(classes)
+      .where(
+        and(eq(classes.id, opts.classId), eq(classes.tenantId, opts.tenantId)),
+      )
+      .limit(1);
+    if (!klass) {
+      throw new Error("Class does not belong to this institute.");
+    }
     await tx.insert(classEnrolments).values({
       tenantId: opts.tenantId,
       classId: opts.classId,
