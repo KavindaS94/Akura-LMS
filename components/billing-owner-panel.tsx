@@ -9,6 +9,10 @@ import {
   downgradeToFreeAction,
   type BillingFormState,
 } from "@/capabilities/billing/lib/actions";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input, Select } from "@/components/ui/input";
+import { Alert } from "@/components/ui/feedback";
 
 function PayHereRedirect({ state }: { state: BillingFormState }) {
   const formRef = useRef<HTMLFormElement>(null);
@@ -59,118 +63,85 @@ export function OwnerBillingPanel({
   >(bankAction, null);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PayHereRedirect state={checkoutState} />
 
-      <section className="rounded-md border border-ink/10 bg-white p-4">
-        <h3 className="font-semibold">Pay with PayHere</h3>
-        <p className="mt-1 text-sm text-muted">
-          Recurring card payment (Growth or Scale).{" "}
-          {payHereReady
-            ? "Checkout opens on PayHere."
-            : "Configure PAYHERE_* env vars to enable."}
-        </p>
+      <Card
+        title="Pay with PayHere"
+        description={
+          payHereReady
+            ? "Recurring card payment (Growth or Scale). Checkout opens on PayHere."
+            : "Configure PAYHERE_* env vars to enable."
+        }
+      >
         <form action={checkoutFormAction} className="mt-4 flex flex-wrap gap-3">
-          <select
-            name="planKey"
-            defaultValue="growth"
-            className="rounded-md border border-ink/15 px-3 py-2 text-sm"
-          >
+          <Select name="planKey" defaultValue="growth" className="w-36">
             <option value="growth">Growth</option>
             <option value="scale">Scale</option>
-          </select>
-          <select
-            name="billingCycle"
-            defaultValue="monthly"
-            className="rounded-md border border-ink/15 px-3 py-2 text-sm"
-          >
+          </Select>
+          <Select name="billingCycle" defaultValue="monthly" className="w-32">
             <option value="monthly">Monthly</option>
             <option value="yearly">Yearly</option>
-          </select>
-          <button
-            type="submit"
-            disabled={!payHereReady || checkoutPending}
-            className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-          >
+          </Select>
+          <Button type="submit" disabled={!payHereReady || checkoutPending}>
             {checkoutPending ? "Starting…" : "Pay with PayHere"}
-          </button>
+          </Button>
         </form>
         {checkoutState?.error ? (
-          <p className="mt-2 text-sm text-danger">{checkoutState.error}</p>
+          <div className="mt-3">
+            <Alert tone="error">{checkoutState.error}</Alert>
+          </div>
         ) : null}
-      </section>
+      </Card>
 
-      <section className="rounded-md border border-ink/10 bg-white p-4">
-        <h3 className="font-semibold">Bank transfer</h3>
-        <dl className="mt-2 grid gap-1 text-sm sm:grid-cols-2">
-          <div>
-            <dt className="text-muted">Bank</dt>
-            <dd>{bank.bankName}</dd>
-          </div>
-          <div>
-            <dt className="text-muted">Account name</dt>
-            <dd>{bank.accountName}</dd>
-          </div>
-          <div>
-            <dt className="text-muted">Account number</dt>
-            <dd>{bank.accountNumber}</dd>
-          </div>
-          <div>
-            <dt className="text-muted">Branch</dt>
-            <dd>{bank.branch}</dd>
-          </div>
+      <Card title="Bank transfer" description="Submit your reference after transferring.">
+        <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+          {[
+            ["Bank", bank.bankName],
+            ["Account name", bank.accountName],
+            ["Account number", bank.accountNumber],
+            ["Branch", bank.branch],
+          ].map(([label, value]) => (
+            <div key={label}>
+              <dt className="text-xs text-muted uppercase">{label}</dt>
+              <dd className="mt-0.5 font-medium text-ink">{value}</dd>
+            </div>
+          ))}
         </dl>
         <form action={bankFormAction} className="mt-4 space-y-3">
           <div className="flex flex-wrap gap-3">
-            <select
-              name="planKey"
-              defaultValue="growth"
-              className="rounded-md border border-ink/15 px-3 py-2 text-sm"
-            >
+            <Select name="planKey" defaultValue="growth" className="w-36">
               <option value="growth">Growth</option>
               <option value="scale">Scale</option>
-            </select>
-            <select
-              name="billingCycle"
-              defaultValue="monthly"
-              className="rounded-md border border-ink/15 px-3 py-2 text-sm"
-            >
+            </Select>
+            <Select name="billingCycle" defaultValue="monthly" className="w-32">
               <option value="monthly">Monthly</option>
               <option value="yearly">Yearly</option>
-            </select>
+            </Select>
           </div>
-          <input
-            name="reference"
-            required
-            placeholder="Transfer reference / slip no."
-            className="w-full rounded-md border border-ink/15 px-3 py-2 text-sm"
-          />
-          <input
-            name="note"
-            placeholder="Optional note"
-            className="w-full rounded-md border border-ink/15 px-3 py-2 text-sm"
-          />
-          <button
-            type="submit"
-            disabled={bankPending}
-            className="rounded-md border border-ink/20 px-4 py-2 text-sm font-medium"
-          >
+          <Input name="reference" required placeholder="Transfer reference / slip no." className="max-w-md" />
+          <Input name="note" placeholder="Optional note" className="max-w-md" />
+          <Button type="submit" disabled={bankPending} variant="secondary">
             {bankPending ? "Submitting…" : "Submit transfer"}
-          </button>
+          </Button>
         </form>
         {bankState?.error ? (
-          <p className="mt-2 text-sm text-danger">{bankState.error}</p>
+          <div className="mt-3">
+            <Alert tone="error">{bankState.error}</Alert>
+          </div>
         ) : null}
         {bankState?.ok ? (
-          <p className="mt-2 text-sm text-success">{bankState.ok}</p>
+          <div className="mt-3">
+            <Alert tone="success">{bankState.ok}</Alert>
+          </div>
         ) : null}
-      </section>
+      </Card>
 
-      <section className="flex flex-wrap gap-3">
-        <button
+      <div className="flex flex-wrap gap-3">
+        <Button
           type="button"
+          variant="ghost"
           disabled={pending}
-          className="rounded-md border border-ink/20 px-4 py-2 text-sm"
           onClick={() => {
             setMsg(null);
             start(async () => {
@@ -181,11 +152,11 @@ export function OwnerBillingPanel({
           }}
         >
           {cancelAtPeriodEnd ? "Keep subscription" : "Cancel at period end"}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="danger"
           disabled={pending}
-          className="rounded-md border border-danger/40 px-4 py-2 text-sm text-danger"
           onClick={() => {
             setMsg(null);
             start(async () => {
@@ -196,8 +167,8 @@ export function OwnerBillingPanel({
           }}
         >
           Downgrade to Free now
-        </button>
-      </section>
+        </Button>
+      </div>
       {msg ? <p className="text-sm text-muted">{msg}</p> : null}
     </div>
   );

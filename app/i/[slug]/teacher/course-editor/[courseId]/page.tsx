@@ -7,6 +7,8 @@ import {
   PublishCourseButton,
 } from "@/components/course-editor";
 import { ResourceUpload } from "@/components/resource-upload";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 export const dynamic = "force-dynamic";
 
@@ -24,45 +26,68 @@ export default async function TeacherCourseEditorPage({
         <div>
           <Link
             href={`/i/${slug}/teacher/course-editor`}
-            className="text-sm text-accent"
+            className="text-sm text-accent hover:underline"
           >
             ← Course editor
           </Link>
-          <h2
-            className="mt-2 text-2xl font-semibold"
-            style={{ fontFamily: "var(--font-display), serif" }}
-          >
-            {course.title}
-          </h2>
-          <p className="mt-1 text-sm text-muted">Status: {course.status}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <h2
+              className="text-2xl font-semibold tracking-tight text-ink"
+              style={{ fontFamily: "var(--font-display), serif" }}
+            >
+              {course.title}
+            </h2>
+            <Badge tone={course.status === "published" ? "success" : "neutral"}>
+              {course.status}
+            </Badge>
+          </div>
         </div>
         <PublishCourseButton slug={slug} courseId={course.id} status={course.status} />
       </div>
 
-      <AddModuleForm slug={slug} courseId={course.id} />
+      <Card title="Add a module" description="Modules group resources for students.">
+        <AddModuleForm slug={slug} courseId={course.id} />
+      </Card>
 
-      <div className="space-y-6">
-        {modules.map(({ module: mod, resources }) => (
-          <article key={mod.id} className="border border-ink/10 bg-white p-4">
-            <h4 className="font-medium">{mod.title}</h4>
-            <ModuleDripForm
-              slug={slug}
-              moduleId={mod.id}
-              dripEnabled={mod.dripEnabled}
-              availableAt={mod.availableAt}
-            />
-            <ul className="mt-3 space-y-1 text-sm">
-              {resources.map((r) => (
-                <li key={r.id} className="text-muted">
-                  {r.type}: {r.title}
-                </li>
-              ))}
-            </ul>
-            <AddResourceForm slug={slug} moduleId={mod.id} />
-            <ResourceUpload slug={slug} moduleId={mod.id} />
-          </article>
-        ))}
-      </div>
+      {modules.length === 0 ? (
+        <p className="text-sm text-muted">No modules yet. Add your first above.</p>
+      ) : (
+        <div className="space-y-6">
+          {modules.map(({ module: mod, resources }) => (
+            <Card
+              key={mod.id}
+              title={mod.title}
+              action={
+                <Badge tone={mod.dripEnabled ? "accent" : "neutral"}>
+                  {mod.dripEnabled ? "Drip release" : "Instant"}
+                </Badge>
+              }
+            >
+              <ModuleDripForm
+                slug={slug}
+                moduleId={mod.id}
+                dripEnabled={mod.dripEnabled}
+                availableAt={mod.availableAt}
+              />
+              <ul className="mt-3 space-y-1.5 text-sm">
+                {resources.map((r) => (
+                  <li key={r.id} className="rounded-lg bg-surface/60 px-3 py-2 text-muted">
+                    <Badge tone="neutral" className="mr-2">{r.type}</Badge>
+                    {r.title}
+                  </li>
+                ))}
+                {resources.length === 0 ? (
+                  <li className="text-sm text-muted">No resources in this module.</li>
+                ) : null}
+              </ul>
+              <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                <AddResourceForm slug={slug} moduleId={mod.id} />
+                <ResourceUpload slug={slug} moduleId={mod.id} />
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

@@ -1,6 +1,8 @@
 import { requireRole } from "@/lib/tenant/context";
 import { ADMIN_ROLES } from "@/lib/rbac";
 import { OnboardingForm } from "@/components/auth-forms";
+import { Card } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -13,17 +15,14 @@ export default async function OnboardingPage({
   await requireRole(slug, ADMIN_ROLES);
 
   return (
-    <section>
-      <h2
-        className="text-2xl font-semibold"
-        style={{ fontFamily: "var(--font-display), serif" }}
-      >
-        Onboarding
-      </h2>
-      <p className="mt-2 text-muted">
-        Set timezone and brand accent. More settings arrive in Phase 3.
-      </p>
-      <OnboardingForm slug={slug} />
+    <section className="space-y-8">
+      <PageHeader
+        title="Onboarding"
+        subtitle="Set timezone and brand accent. More settings arrive in Phase 3."
+      />
+      <Card title="Workspace setup">
+        <OnboardingForm slug={slug} />
+      </Card>
     </section>
   );
 }

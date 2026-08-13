@@ -1,6 +1,6 @@
 import { getTenantContext } from "@/lib/tenant/context";
 import { ForbiddenError } from "@/lib/rbac";
-import { TenantNav, ForbiddenPage } from "@/components/tenant-shell";
+import { TenantShell, ForbiddenPage } from "@/components/tenant-shell";
 import { TenantError } from "@/lib/tenant/resolve";
 import { redirect, notFound } from "next/navigation";
 
@@ -23,13 +23,15 @@ export default async function TenantLayout({
           ["--accent" as string]: ctx.tenant.accentColor ?? "#E4761B",
         }}
       >
-        <TenantNav
+        <TenantShell
           slug={ctx.slug}
           tenantName={ctx.tenant.name}
           role={ctx.membership.role}
           isOwner={ctx.membership.isOwner}
-        />
-        <div className="mx-auto max-w-5xl px-6 py-8">{children}</div>
+          userEmail={ctx.user.email}
+        >
+          {children}
+        </TenantShell>
       </div>
     );
   } catch (err) {

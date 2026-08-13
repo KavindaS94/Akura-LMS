@@ -1,4 +1,8 @@
 import { loadStudentResultsPage } from "@/capabilities/exams/lib/actions";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/card";
+import { Alert } from "@/components/ui/feedback";
+import { Badge } from "@/components/ui/badge";
 
 export const dynamic = "force-dynamic";
 
@@ -11,38 +15,38 @@ export default async function StudentResultsPage({
   const { results, error, studentId } = await loadStudentResultsPage(slug);
 
   return (
-    <section className="space-y-6">
-      <div>
-        <h2
-          className="text-2xl font-semibold"
-          style={{ fontFamily: "var(--font-display), serif" }}
-        >
-          Results
-        </h2>
-        <p className="mt-2 text-muted">Published marks only.</p>
-      </div>
+    <section className="space-y-8">
+      <PageHeader title="Results" subtitle="Published marks only." />
 
-      {error ? <p className="text-sm text-danger">{error}</p> : null}
+      {error ? <Alert tone="error">{error}</Alert> : null}
 
       {results.length === 0 && !error ? (
-        <p className="text-sm text-muted">No published results yet.</p>
+        <EmptyState
+          title="No published results yet"
+          description="Your institute will publish results here, and guardians receive them by email."
+        />
       ) : (
-        <ul className="divide-y divide-ink/10 border border-ink/10 bg-white">
+        <ul className="space-y-3">
           {results.map((r) => (
-            <li key={r.examId} className="px-3 py-3 text-sm">
-              <p className="font-medium">{r.title}</p>
-              <p className="text-xs text-muted">
+            <li
+              key={r.examId}
+              className="rounded-xl border border-ink/10 bg-white p-4 shadow-xs"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-semibold text-ink">{r.title}</p>
+                <Badge tone="success">
+                  {r.score}/{r.maxMarks}
+                  {r.percentage !== null ? ` · ${r.percentage}%` : ""}
+                  {r.letter ? ` · ${r.letter}` : ""}
+                </Badge>
+              </div>
+              <p className="mt-1 text-sm text-muted">
                 {r.className} · {r.examDate.toISOString().slice(0, 10)}
-              </p>
-              <p className="mt-1">
-                {r.score}/{r.maxMarks}
-                {r.percentage !== null ? ` (${r.percentage}%)` : ""}
-                {r.letter ? ` · ${r.letter}` : ""}
                 {r.showRank && r.rank != null ? ` · Rank ${r.rank}` : ""}
               </p>
               {studentId ? (
                 <a
-                  className="mt-1 inline-block text-accent"
+                  className="mt-3 inline-block rounded-lg border border-ink/20 px-3 py-1.5 text-sm font-medium text-ink transition-colors hover:border-accent/50 hover:text-accent"
                   href={`/api/report-card?slug=${encodeURIComponent(slug)}&examId=${r.examId}&studentId=${studentId}`}
                 >
                   Download report card

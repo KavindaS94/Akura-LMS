@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { openTodaySessionAction } from "@/capabilities/attendance/lib/actions";
+import { Button } from "@/components/ui/button";
 
 export function OpenSessionButton({
   slug,
@@ -15,10 +16,9 @@ export function OpenSessionButton({
   const [pending, start] = useTransition();
 
   return (
-    <button
+    <Button
       type="button"
       disabled={pending}
-      className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
       onClick={() =>
         start(async () => {
           const res = await openTodaySessionAction(slug, classId);
@@ -31,6 +31,6 @@ export function OpenSessionButton({
       }
     >
       {pending ? "Opening…" : "Mark today"}
-    </button>
+    </Button>
   );
 }

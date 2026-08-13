@@ -2,6 +2,8 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { saveMarksAction } from "@/capabilities/exams/lib/actions";
+import { Button } from "@/components/ui/button";
+import { Alert } from "@/components/ui/feedback";
 
 type Row = {
   studentId: string;
@@ -63,25 +65,33 @@ export function MarksEntryGrid({
     });
   }
 
+  const pct = initial.length > 0 ? Math.round((filled / initial.length) * 100) : 0;
+
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted">
-        Max {maxMarks} · {filled}/{initial.length} entered
-        {published ? " · Published (read-only)" : ""}
-      </p>
-      <div className="overflow-x-auto border border-ink/10 bg-white">
+      <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+        <p className="text-muted">
+          Max <strong className="text-ink">{maxMarks}</strong> ·{" "}
+          {filled}/{initial.length} entered
+          {published ? " · Published (read-only)" : ""}
+        </p>
+        <div className="h-1.5 w-32 overflow-hidden rounded-full bg-ink/8">
+          <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
+        </div>
+      </div>
+      <div className="overflow-x-auto rounded-xl border border-ink/10 bg-white shadow-xs">
         <table className="min-w-full text-left text-sm">
-          <thead className="border-b border-ink/10 bg-surface text-xs uppercase tracking-wide text-muted">
+          <thead className="border-b border-ink/10 bg-surface/60 text-xs uppercase tracking-wide text-muted">
             <tr>
-              <th className="px-3 py-2">Student</th>
-              <th className="px-3 py-2 w-32">Score</th>
+              <th className="px-4 py-2.5">Student</th>
+              <th className="w-32 px-4 py-2.5">Score</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-ink/10">
+          <tbody className="divide-y divide-ink/8">
             {initial.map((r) => (
-              <tr key={r.studentId}>
-                <td className="px-3 py-2 font-medium">{r.fullName}</td>
-                <td className="px-3 py-2">
+              <tr key={r.studentId} className="transition-colors hover:bg-surface/40">
+                <td className="px-4 py-2.5 font-medium text-ink">{r.fullName}</td>
+                <td className="px-4 py-2.5">
                   <input
                     type="number"
                     inputMode="decimal"
@@ -96,7 +106,7 @@ export function MarksEntryGrid({
                         [r.studentId]: e.target.value,
                       }))
                     }
-                    className="w-full rounded-md border border-ink/15 px-2 py-1.5 disabled:bg-surface"
+                    className="w-full rounded-lg border border-ink/15 bg-white px-3 py-1.5 text-sm outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/25 disabled:bg-surface disabled:text-muted"
                   />
                 </td>
               </tr>
@@ -104,17 +114,12 @@ export function MarksEntryGrid({
           </tbody>
         </table>
       </div>
-      {error ? <p className="text-sm text-danger">{error}</p> : null}
-      {message ? <p className="text-sm text-success">{message}</p> : null}
+      {error ? <Alert tone="error">{error}</Alert> : null}
+      {message ? <Alert tone="success">{message}</Alert> : null}
       {!published ? (
-        <button
-          type="button"
-          disabled={pending}
-          onClick={save}
-          className="rounded-md bg-ink px-4 py-2 text-sm font-medium text-surface disabled:opacity-60"
-        >
+        <Button type="button" variant="secondary" disabled={pending} onClick={save}>
           {pending ? "Saving…" : "Save marks"}
-        </button>
+        </Button>
       ) : null}
     </div>
   );

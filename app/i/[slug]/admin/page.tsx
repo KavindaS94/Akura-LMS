@@ -1,8 +1,28 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/tenant/context";
 import { ADMIN_ROLES } from "@/lib/rbac";
+import { Badge } from "@/components/ui/badge";
+import {
+  IconUsers,
+  IconInbox,
+  IconLink,
+  IconCap,
+  IconUserCog,
+  IconChart,
+  IconGear,
+  IconCard,
+} from "@/components/icons";
 
-export const dynamic = "force-dynamic";
+const quickLinks = [
+  { href: "/admin/students", label: "Students", icon: IconUsers, blurb: "Roster & guardians" },
+  { href: "/admin/applications", label: "Applications", icon: IconInbox, blurb: "Approve registrations" },
+  { href: "/admin/registration-links", label: "Registration links", icon: IconLink, blurb: "Shareable signup links" },
+  { href: "/admin/classes", label: "Classes", icon: IconCap, blurb: "Rooms & teachers" },
+  { href: "/admin/staff", label: "Staff & invites", icon: IconUserCog, blurb: "Invite teammates" },
+  { href: "/admin/reports", label: "Reports & export", icon: IconChart, blurb: "Attendance & data" },
+  { href: "/admin/settings", label: "Settings", icon: IconGear, blurb: "Workspace config" },
+  { href: "/admin/billing", label: "Billing & usage", icon: IconCard, blurb: "Plan & capacity" },
+];
 
 export default async function AdminDashboardPage({
   params,
@@ -13,59 +33,42 @@ export default async function AdminDashboardPage({
   const ctx = await requireRole(slug, ADMIN_ROLES);
 
   return (
-    <section>
-      <h2
-        className="text-2xl font-semibold text-ink"
-        style={{ fontFamily: "var(--font-display), serif" }}
-      >
-        Admin
-      </h2>
-      <p className="mt-2 text-muted">
-        Signed in as {ctx.user.email}
-        {ctx.membership.isOwner ? " · Owner" : ""}.
-      </p>
-      <ul className="mt-8 space-y-2 text-sm">
-        <li>
-          <Link className="text-accent" href={`/i/${slug}/admin/students`}>
-            Students
+    <section className="space-y-8">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2
+            className="text-2xl font-semibold tracking-tight text-ink"
+            style={{ fontFamily: "var(--font-display), serif" }}
+          >
+            Dashboard
+          </h2>
+          <p className="mt-1 text-sm text-muted">
+            Signed in as {ctx.user.email}
+            {ctx.membership.isOwner ? (
+              <>
+                {" "}
+                <Badge tone="accent">Owner</Badge>
+              </>
+            ) : null}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {quickLinks.map((q) => (
+          <Link
+            key={q.href}
+            href={`/i/${slug}${q.href}`}
+            className="group rounded-2xl border border-ink/10 bg-white p-5 shadow-xs transition-all hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-sm"
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/12 text-accent">
+              <q.icon />
+            </div>
+            <p className="mt-4 font-semibold text-ink">{q.label}</p>
+            <p className="mt-1 text-xs text-muted">{q.blurb}</p>
           </Link>
-        </li>
-        <li>
-          <Link className="text-accent" href={`/i/${slug}/admin/applications`}>
-            Applications
-          </Link>
-        </li>
-        <li>
-          <Link className="text-accent" href={`/i/${slug}/admin/registration-links`}>
-            Registration links
-          </Link>
-        </li>
-        <li>
-          <Link className="text-accent" href={`/i/${slug}/admin/classes`}>
-            Classes
-          </Link>
-        </li>
-        <li>
-          <Link className="text-accent" href={`/i/${slug}/admin/staff`}>
-            Staff & invites
-          </Link>
-        </li>
-        <li>
-          <Link className="text-accent" href={`/i/${slug}/admin/reports`}>
-            Reports & export
-          </Link>
-        </li>
-        <li>
-          <Link className="text-accent" href={`/i/${slug}/admin/settings`}>
-            Settings
-          </Link>
-        </li>
-        <li>
-          <Link className="text-accent" href={`/i/${slug}/admin/billing`}>
-            Billing & usage
-          </Link>
-        </li>
-      </ul>
+        ))}
+      </div>
     </section>
   );
 }

@@ -7,6 +7,9 @@ import {
   publishExamAction,
   type ExamFormState,
 } from "@/capabilities/exams/lib/actions";
+import { Button } from "@/components/ui/button";
+import { Input, Select, Field } from "@/components/ui/input";
+import { Alert } from "@/components/ui/feedback";
 
 const initial: ExamFormState = null;
 
@@ -29,51 +32,31 @@ export function CreateExamForm({
 
   return (
     <form action={formAction} className="mt-4 grid max-w-lg gap-3">
-      <select
-        name="classId"
-        required
-        className="rounded-md border border-ink/15 px-3 py-2"
-        defaultValue=""
-      >
-        <option value="" disabled>
-          Select class
-        </option>
-        {classes.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
+      <Field label="Class">
+        <Select name="classId" required defaultValue="">
+          <option value="" disabled>
+            Select class
           </option>
-        ))}
-      </select>
-      <input
-        name="title"
-        required
-        placeholder="Exam title"
-        className="rounded-md border border-ink/15 px-3 py-2"
-      />
-      <input
-        name="examDate"
-        type="date"
-        required
-        className="rounded-md border border-ink/15 px-3 py-2"
-      />
-      <input
-        name="maxMarks"
-        type="number"
-        required
-        min={1}
-        step="0.01"
-        defaultValue={100}
-        placeholder="Max marks"
-        className="rounded-md border border-ink/15 px-3 py-2"
-      />
-      {state?.error ? <p className="text-sm text-danger">{state.error}</p> : null}
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-      >
+          {classes.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      <Field label="Title">
+        <Input name="title" required placeholder="Term 1 Mathematics" />
+      </Field>
+      <Field label="Exam date">
+        <Input name="examDate" type="date" required />
+      </Field>
+      <Field label="Max marks">
+        <Input name="maxMarks" type="number" required min={1} step="0.01" defaultValue={100} />
+      </Field>
+      {state?.error ? <Alert tone="error">{state.error}</Alert> : null}
+      <Button type="submit" disabled={pending} className="self-start">
         {pending ? "Creating…" : "Create exam"}
-      </button>
+      </Button>
     </form>
   );
 }
@@ -91,10 +74,9 @@ export function PublishExamButton({
 
   return (
     <div className="space-y-2">
-      <button
+      <Button
         type="button"
         disabled={pending}
-        className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
         onClick={() =>
           start(async () => {
             setError(null);
@@ -105,8 +87,8 @@ export function PublishExamButton({
         }
       >
         {pending ? "Publishing…" : "Publish marks"}
-      </button>
-      {error ? <p className="text-sm text-danger">{error}</p> : null}
+      </Button>
+      {error ? <Alert tone="error">{error}</Alert> : null}
       <p className="text-xs text-muted">
         Every student needs a score first. Teachers cannot publish.
       </p>

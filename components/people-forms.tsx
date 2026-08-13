@@ -10,35 +10,11 @@ import {
   submitPublicApplicationAction,
   type PeopleFormState,
 } from "@/capabilities/students/lib/actions";
+import { Button } from "@/components/ui/button";
+import { Input, Select, Field } from "@/components/ui/input";
+import { FormStatus } from "@/components/ui/form-status";
 
 const initial: PeopleFormState = null;
-
-function Status({ state }: { state: PeopleFormState }) {
-  if (!state) return null;
-  return (
-    <div className="space-y-1 text-sm">
-      {state.error ? <p className="text-danger">{state.error}</p> : null}
-      {state.ok ? <p className="text-success">{state.ok}</p> : null}
-      {state.inviteUrl ? (
-        <p className="break-all text-ink">
-          Token link: <code>{state.inviteUrl}</code>
-        </p>
-      ) : null}
-      {state.joinUrl ? (
-        <p className="break-all text-ink">
-          Vanity link: <code>{state.joinUrl}</code>
-        </p>
-      ) : null}
-      {state.csvErrors?.length ? (
-        <ul className="list-disc pl-5 text-danger">
-          {state.csvErrors.map((e) => (
-            <li key={e}>{e}</li>
-          ))}
-        </ul>
-      ) : null}
-    </div>
-  );
-}
 
 export function CreateStudentForm({
   slug,
@@ -50,25 +26,41 @@ export function CreateStudentForm({
   const action = createStudentAction.bind(null, slug);
   const [state, formAction, pending] = useActionState(action, initial);
   return (
-    <form action={formAction} className="mt-4 grid max-w-xl gap-3">
-      <input name="fullName" required placeholder="Full name" className="rounded-md border border-ink/15 px-3 py-2" />
-      <input name="email" type="email" placeholder="Email" className="rounded-md border border-ink/15 px-3 py-2" />
-      <input name="phone" placeholder="Phone" className="rounded-md border border-ink/15 px-3 py-2" />
-      <select name="classId" className="rounded-md border border-ink/15 px-3 py-2" defaultValue="">
-        <option value="">No class yet</option>
-        {classes.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
-        ))}
-      </select>
-      <input name="guardianName" placeholder="Guardian name" className="rounded-md border border-ink/15 px-3 py-2" />
-      <input name="guardianEmail" type="email" placeholder="Guardian email" className="rounded-md border border-ink/15 px-3 py-2" />
-      <input name="guardianPhone" placeholder="Guardian phone" className="rounded-md border border-ink/15 px-3 py-2" />
-      <Status state={state} />
-      <button type="submit" disabled={pending} className="rounded-md bg-ink px-4 py-2 text-sm text-surface disabled:opacity-60">
-        {pending ? "Saving…" : "Add student"}
-      </button>
+    <form action={formAction} className="mt-4 grid max-w-xl gap-3 sm:grid-cols-2">
+      <Field label="Full name">
+        <Input name="fullName" required placeholder="Full name" />
+      </Field>
+      <Field label="Email">
+        <Input name="email" type="email" placeholder="Email" />
+      </Field>
+      <Field label="Phone">
+        <Input name="phone" placeholder="Phone" />
+      </Field>
+      <Field label="Class">
+        <Select name="classId" defaultValue="">
+          <option value="">No class yet</option>
+          {classes.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      <Field label="Guardian name">
+        <Input name="guardianName" placeholder="Guardian name" />
+      </Field>
+      <Field label="Guardian email">
+        <Input name="guardianEmail" type="email" placeholder="Guardian email" />
+      </Field>
+      <Field label="Guardian phone">
+        <Input name="guardianPhone" placeholder="Guardian phone" />
+      </Field>
+      <FormStatus state={state} />
+      <div className="sm:col-span-2">
+        <Button type="submit" disabled={pending}>
+          {pending ? "Saving…" : "Add student"}
+        </Button>
+      </div>
     </form>
   );
 }
@@ -77,13 +69,13 @@ export function ImportCsvForm({ slug }: { slug: string }) {
   const action = importStudentsCsvAction.bind(null, slug);
   const [state, formAction, pending] = useActionState(action, initial);
   return (
-    <form action={formAction} className="mt-4 space-y-3">
+    <form action={formAction} className="mt-4 flex flex-col gap-3">
       <p className="text-xs text-muted">CSV columns: full_name, email, phone</p>
       <input name="csv" type="file" accept=".csv,text/csv" required />
-      <Status state={state} />
-      <button type="submit" disabled={pending} className="rounded-md border border-ink/20 px-4 py-2 text-sm disabled:opacity-60">
+      <FormStatus state={state} />
+      <Button type="submit" disabled={pending} variant="ghost" className="self-start">
         {pending ? "Importing…" : "Import CSV"}
-      </button>
+      </Button>
     </form>
   );
 }
@@ -93,17 +85,23 @@ export function CreateClassForm({ slug }: { slug: string }) {
   const [state, formAction, pending] = useActionState(action, initial);
   return (
     <form action={formAction} className="mt-4 flex max-w-md flex-col gap-3">
-      <input name="name" required placeholder="Class name" className="rounded-md border border-ink/15 px-3 py-2" />
-      <input name="academicYear" placeholder="Academic year" className="rounded-md border border-ink/15 px-3 py-2" />
-      <input
-        name="teacherAuthUserId"
-        placeholder="Teacher auth user id (optional)"
-        className="rounded-md border border-ink/15 px-3 py-2 font-mono text-xs"
-      />
-      <Status state={state} />
-      <button type="submit" disabled={pending} className="rounded-md bg-ink px-4 py-2 text-sm text-surface">
+      <Field label="Class name">
+        <Input name="name" required placeholder="Grade 10 A" />
+      </Field>
+      <Field label="Academic year">
+        <Input name="academicYear" placeholder="2026" />
+      </Field>
+      <Field label="Teacher (optional)">
+        <Input
+          name="teacherAuthUserId"
+          placeholder="Teacher auth user id"
+          className="font-mono text-xs"
+        />
+      </Field>
+      <FormStatus state={state} />
+      <Button type="submit" disabled={pending} variant="secondary" className="self-start">
         {pending ? "Saving…" : "Create class"}
-      </button>
+      </Button>
     </form>
   );
 }
@@ -120,20 +118,18 @@ export function AssignTeacherForm({
   return (
     <form action={formAction} className="mt-2 flex flex-wrap items-end gap-2">
       <input type="hidden" name="classId" value={classId} />
-      <input
+      <Input
         name="teacherAuthUserId"
         required
         placeholder="Teacher auth user id"
-        className="min-w-[16rem] flex-1 rounded-md border border-ink/15 px-3 py-1.5 font-mono text-xs"
+        className="min-w-[16rem] flex-1 font-mono text-xs"
       />
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded-md border border-ink/20 px-3 py-1.5 text-xs"
-      >
+      <Button type="submit" disabled={pending} variant="ghost" size="sm">
         {pending ? "…" : "Assign teacher"}
-      </button>
-      <Status state={state} />
+      </Button>
+      <div className="w-full">
+        <FormStatus state={state} />
+      </div>
     </form>
   );
 }
@@ -149,24 +145,35 @@ export function CreateRegLinkForm({
   const [state, formAction, pending] = useActionState(action, initial);
   return (
     <form action={formAction} className="mt-4 grid max-w-xl gap-3">
-      <input name="label" required placeholder="Label" defaultValue="Open registration" className="rounded-md border border-ink/15 px-3 py-2" />
-      <input name="joinSlug" placeholder="Vanity slug (e.g. stmarys)" className="rounded-md border border-ink/15 px-3 py-2" />
-      <select name="classId" className="rounded-md border border-ink/15 px-3 py-2" defaultValue="">
-        <option value="">Any / choose later</option>
-        {classes.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
-        ))}
-      </select>
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" name="collectGuardian" defaultChecked />
+      <Field label="Label">
+        <Input name="label" required placeholder="Open registration" defaultValue="Open registration" />
+      </Field>
+      <Field label="Vanity slug" hint="Optional short address, e.g. stmarys">
+        <Input name="joinSlug" placeholder="e.g. stmarys" />
+      </Field>
+      <Field label="Default class">
+        <Select name="classId" defaultValue="">
+          <option value="">Any / choose later</option>
+          {classes.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      <label className="flex items-center gap-2 text-sm text-ink">
+        <input
+          type="checkbox"
+          name="collectGuardian"
+          defaultChecked
+          className="h-4 w-4 rounded border-ink/20 accent-[var(--accent)]"
+        />
         Collect guardian details
       </label>
-      <Status state={state} />
-      <button type="submit" disabled={pending} className="rounded-md bg-accent px-4 py-2 text-sm text-white">
+      <FormStatus state={state} />
+      <Button type="submit" disabled={pending} className="self-start">
         {pending ? "Creating…" : "Create registration link"}
-      </button>
+      </Button>
     </form>
   );
 }
@@ -186,25 +193,47 @@ export function PublicRegistrationForm({
   );
 
   return (
-    <form action={formAction} className="mt-8 flex w-full max-w-md flex-col gap-3">
+    <form action={formAction} className="mt-6 flex w-full flex-col gap-3">
       <input type="hidden" name="token" value={token} />
       <input type="hidden" name="src" value={src ?? ""} />
-      <input name="fullName" required placeholder="Full name" className="rounded-md border border-ink/15 bg-white px-3 py-2" />
-      <input name="email" type="email" required placeholder="Email" className="rounded-md border border-ink/15 bg-white px-3 py-2" />
-      <input name="phone" placeholder="Phone" className="rounded-md border border-ink/15 bg-white px-3 py-2" />
-      <input name="dateOfBirth" type="date" placeholder="DOB" className="rounded-md border border-ink/15 bg-white px-3 py-2" />
-      <input name="password" type="password" required placeholder="Create password" className="rounded-md border border-ink/15 bg-white px-3 py-2" />
+      <Field label="Full name">
+        <Input name="fullName" required placeholder="Full name" />
+      </Field>
+      <Field label="Email">
+        <Input name="email" type="email" required placeholder="Email" />
+      </Field>
+      <Field label="Phone">
+        <Input name="phone" placeholder="Phone" />
+      </Field>
+      <Field label="Date of birth">
+        <Input name="dateOfBirth" type="date" />
+      </Field>
+      <Field label="Create password">
+        <Input
+          name="password"
+          type="password"
+          required
+          placeholder="At least 8 characters"
+          autoComplete="new-password"
+        />
+      </Field>
       {collectGuardian ? (
         <>
-          <input name="guardianName" required placeholder="Guardian name" className="rounded-md border border-ink/15 bg-white px-3 py-2" />
-          <input name="guardianEmail" type="email" placeholder="Guardian email" className="rounded-md border border-ink/15 bg-white px-3 py-2" />
-          <input name="guardianPhone" placeholder="Guardian phone" className="rounded-md border border-ink/15 bg-white px-3 py-2" />
+          <Field label="Guardian name">
+            <Input name="guardianName" required placeholder="Guardian name" />
+          </Field>
+          <Field label="Guardian email">
+            <Input name="guardianEmail" type="email" placeholder="Guardian email" />
+          </Field>
+          <Field label="Guardian phone">
+            <Input name="guardianPhone" placeholder="Guardian phone" />
+          </Field>
         </>
       ) : null}
-      <Status state={state} />
-      <button type="submit" disabled={pending} className="rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-white">
+      <FormStatus state={state} />
+      <Button type="submit" disabled={pending} className="mt-1 w-full">
         {pending ? "Submitting…" : "Submit application"}
-      </button>
+      </Button>
     </form>
   );
 }

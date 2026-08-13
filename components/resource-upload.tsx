@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Input } from "@/components/ui/input";
+import { Alert } from "@/components/ui/feedback";
 
 export function ResourceUpload({
   slug,
@@ -18,11 +20,11 @@ export function ResourceUpload({
   return (
     <div className="mt-3 space-y-2 border-t border-ink/10 pt-3">
       <p className="text-xs font-medium uppercase tracking-wide text-muted">File upload</p>
-      <input
+      <Input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="File title"
-        className="w-full rounded-md border border-ink/15 px-3 py-2 text-sm"
+        className="max-w-xs"
       />
       <input
         type="file"
@@ -47,9 +49,9 @@ export function ResourceUpload({
             router.refresh();
           });
         }}
-        className="block w-full text-sm"
+        className="block w-full max-w-xs text-sm"
       />
-      {error ? <p className="text-sm text-danger">{error}</p> : null}
+      {error ? <Alert tone="error">{error}</Alert> : null}
       {pending ? <p className="text-xs text-muted">Uploading…</p> : null}
     </div>
   );

@@ -10,6 +10,9 @@ import {
   updateModuleDripAction,
   type CourseFormState,
 } from "@/capabilities/courses/lib/actions";
+import { Button } from "@/components/ui/button";
+import { Input, Select, Textarea, Field } from "@/components/ui/input";
+import { Alert } from "@/components/ui/feedback";
 
 const initial: CourseFormState = null;
 
@@ -32,22 +35,28 @@ export function CreateCourseForm({
 
   return (
     <form action={formAction} className="mt-4 grid max-w-lg gap-3">
-      <select name="classId" required defaultValue="" className="rounded-md border border-ink/15 px-3 py-2">
-        <option value="" disabled>
-          Select class
-        </option>
-        {classes.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
+      <Field label="Class">
+        <Select name="classId" required defaultValue="">
+          <option value="" disabled>
+            Select class
           </option>
-        ))}
-      </select>
-      <input name="title" required placeholder="Course title" className="rounded-md border border-ink/15 px-3 py-2" />
-      <textarea name="description" placeholder="Description" className="rounded-md border border-ink/15 px-3 py-2" rows={3} />
-      {state?.error ? <p className="text-sm text-danger">{state.error}</p> : null}
-      <button type="submit" disabled={pending} className="rounded-md bg-accent px-4 py-2 text-sm text-white disabled:opacity-60">
+          {classes.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      <Field label="Title">
+        <Input name="title" required placeholder="Grade 10 Mathematics" />
+      </Field>
+      <Field label="Description">
+        <Textarea name="description" placeholder="What students will learn" rows={3} />
+      </Field>
+      {state?.error ? <Alert tone="error">{state.error}</Alert> : null}
+      <Button type="submit" disabled={pending} className="self-start">
         {pending ? "Creating…" : "Create course"}
-      </button>
+      </Button>
     </form>
   );
 }
@@ -66,10 +75,10 @@ export function PublishCourseButton({
   const next = status === "published" ? "draft" : "published";
 
   return (
-    <button
+    <Button
       type="button"
+      variant="secondary"
       disabled={pending}
-      className="rounded-md bg-ink px-4 py-2 text-sm text-surface disabled:opacity-60"
       onClick={() =>
         start(async () => {
           await publishCourseAction(slug, courseId, next);
@@ -78,7 +87,7 @@ export function PublishCourseButton({
       }
     >
       {pending ? "…" : next === "published" ? "Publish course" : "Unpublish"}
-    </button>
+    </Button>
   );
 }
 
@@ -92,12 +101,16 @@ export function AddModuleForm({ slug, courseId }: { slug: string; courseId: stri
 
   return (
     <form action={formAction} className="mt-4 flex flex-wrap items-end gap-2">
-      <input name="title" required placeholder="Module title" className="rounded-md border border-ink/15 px-3 py-2" />
-      <input name="availableAt" type="datetime-local" className="rounded-md border border-ink/15 px-3 py-2" />
-      <button type="submit" disabled={pending} className="rounded-md border border-ink/20 px-3 py-2 text-sm">
+      <Input name="title" required placeholder="Module title" className="w-56" />
+      <Input name="availableAt" type="datetime-local" className="w-52" />
+      <Button type="submit" disabled={pending} variant="ghost" size="sm">
         {pending ? "…" : "Add module"}
-      </button>
-      {state?.error ? <p className="w-full text-sm text-danger">{state.error}</p> : null}
+      </Button>
+      {state?.error ? (
+        <p className="w-full text-sm">
+          <Alert tone="error">{state.error}</Alert>
+        </p>
+      ) : null}
     </form>
   );
 }
@@ -128,19 +141,24 @@ export function ModuleDripForm({
 
   return (
     <form action={formAction} className="mt-2 flex flex-wrap items-center gap-3 text-sm">
-      <label className="flex items-center gap-2">
-        <input type="checkbox" name="dripEnabled" defaultChecked={dripEnabled} />
+      <label className="flex items-center gap-2 text-ink">
+        <input
+          type="checkbox"
+          name="dripEnabled"
+          defaultChecked={dripEnabled}
+          className="h-4 w-4 rounded border-ink/20 accent-[var(--accent)]"
+        />
         Drip release
       </label>
-      <input
+      <Input
         name="availableAt"
         type="datetime-local"
         defaultValue={local}
-        className="rounded-md border border-ink/15 px-2 py-1"
+        className="w-52 py-1 text-xs"
       />
-      <button type="submit" disabled={pending} className="rounded-md border border-ink/20 px-2 py-1 text-xs">
+      <Button type="submit" disabled={pending} variant="ghost" size="sm">
         Save drip
-      </button>
+      </Button>
     </form>
   );
 }
@@ -155,26 +173,38 @@ export function AddResourceForm({ slug, moduleId }: { slug: string; moduleId: st
   }, [state?.ok, router]);
 
   return (
-    <form action={formAction} className="mt-3 grid gap-2 border-t border-ink/10 pt-3">
+    <form action={formAction} className="mt-3 grid max-w-lg gap-2 border-t border-ink/10 pt-3">
       <input type="hidden" name="type" value={type} />
       <div className="flex gap-2 text-sm">
-        <button type="button" className={type === "text" ? "text-accent" : "text-muted"} onClick={() => setType("text")}>
+        <button
+          type="button"
+          className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            type === "text" ? "bg-accent/12 text-accent" : "text-muted hover:text-ink"
+          }`}
+          onClick={() => setType("text")}
+        >
           Text
         </button>
-        <button type="button" className={type === "link" ? "text-accent" : "text-muted"} onClick={() => setType("link")}>
+        <button
+          type="button"
+          className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            type === "link" ? "bg-accent/12 text-accent" : "text-muted hover:text-ink"
+          }`}
+          onClick={() => setType("link")}
+        >
           Link
         </button>
       </div>
-      <input name="title" required placeholder="Resource title" className="rounded-md border border-ink/15 px-3 py-2 text-sm" />
+      <Input name="title" required placeholder="Resource title" />
       {type === "text" ? (
-        <textarea name="body" rows={3} placeholder="Content" className="rounded-md border border-ink/15 px-3 py-2 text-sm" />
+        <Textarea name="body" rows={3} placeholder="Content" />
       ) : (
-        <input name="externalUrl" type="url" placeholder="https://" className="rounded-md border border-ink/15 px-3 py-2 text-sm" />
+        <Input name="externalUrl" type="url" placeholder="https://" />
       )}
-      {state?.error ? <p className="text-sm text-danger">{state.error}</p> : null}
-      <button type="submit" disabled={pending} className="justify-self-start rounded-md border border-ink/20 px-3 py-1.5 text-sm">
+      {state?.error ? <Alert tone="error">{state.error}</Alert> : null}
+      <Button type="submit" disabled={pending} variant="ghost" size="sm" className="justify-self-start">
         {pending ? "…" : "Add resource"}
-      </button>
+      </Button>
     </form>
   );
 }

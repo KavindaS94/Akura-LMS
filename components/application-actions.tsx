@@ -5,6 +5,7 @@ import {
   approveApplicationAction,
   rejectApplicationAction,
 } from "@/capabilities/students/lib/actions";
+import { Button } from "@/components/ui/button";
 
 export function ApplicationActions({
   slug,
@@ -16,10 +17,11 @@ export function ApplicationActions({
   const [pending, start] = useTransition();
   return (
     <div className="flex gap-2">
-      <button
+      <Button
         type="button"
+        size="sm"
         disabled={pending}
-        className="rounded-md bg-success px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
+        className="bg-success hover:bg-success/90 focus-visible:outline-success"
         onClick={() =>
           start(async () => {
             const res = await approveApplicationAction(slug, applicationId);
@@ -29,11 +31,12 @@ export function ApplicationActions({
         }
       >
         Approve
-      </button>
-      <button
+      </Button>
+      <Button
         type="button"
+        size="sm"
+        variant="danger"
         disabled={pending}
-        className="rounded-md border border-danger px-3 py-1.5 text-xs text-danger disabled:opacity-60"
         onClick={() =>
           start(async () => {
             await rejectApplicationAction(slug, applicationId);
@@ -42,7 +45,7 @@ export function ApplicationActions({
         }
       >
         Reject
-      </button>
+      </Button>
     </div>
   );
 }

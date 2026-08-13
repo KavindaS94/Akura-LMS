@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { rowsOf } from "@/lib/db/result";
 import { AcceptInviteForm } from "@/components/auth-forms";
+import { AuthShell, AuthCardNotice } from "@/components/auth-shell";
 
 export const dynamic = "force-dynamic";
 
@@ -14,13 +14,11 @@ export default async function AcceptInvitePage({
   const { token } = await searchParams;
   if (!token) {
     return (
-      <main className="mx-auto max-w-md px-6 py-24 text-center">
-        <h1 className="text-2xl font-semibold">Missing invite</h1>
-        <p className="mt-2 text-muted">This link is incomplete.</p>
-        <Link href="/" className="mt-6 inline-block text-accent">
-          Home
-        </Link>
-      </main>
+      <AuthCardNotice
+        title="Missing invite"
+        body="This link is incomplete."
+        action={{ href: "/", label: "Home" }}
+      />
     );
   }
 
@@ -37,28 +35,20 @@ export default async function AcceptInvitePage({
     deleted_at: Date | null;
   }>(result)[0];
   if (!invite || invite.deleted_at) {
-    return (
-      <main className="mx-auto max-w-md px-6 py-24 text-center">
-        <h1 className="text-2xl font-semibold">Invite not found</h1>
-      </main>
-    );
+    return <AuthCardNotice title="Invite not found" />;
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-16">
-      <Link href="/" className="text-sm text-muted">
-        ← Akura
-      </Link>
-      <h1
-        className="mt-6 text-3xl font-semibold text-ink"
-        style={{ fontFamily: "var(--font-display), serif" }}
-      >
-        Join {invite.tenant_name}
-      </h1>
-      <p className="mt-2 text-muted">
-        Role: <strong>{invite.role}</strong>
-      </p>
+    <AuthShell
+      eyebrow="You're invited"
+      title={<>Join {invite.tenant_name}</>}
+      subtitle={
+        <>
+          Role: <strong className="font-medium text-ink">{invite.role}</strong>
+        </>
+      }
+    >
       <AcceptInviteForm token={token} email={invite.email} />
-    </main>
+    </AuthShell>
   );
 }

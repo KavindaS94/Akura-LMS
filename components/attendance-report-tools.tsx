@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+
 export function AttendanceReportTools({
   className,
   eligibilityPct,
@@ -52,20 +54,12 @@ export function AttendanceReportTools({
 
   return (
     <div className="flex flex-wrap gap-2 print:hidden">
-      <button
-        type="button"
-        onClick={downloadCsv}
-        className="rounded-md border border-ink/20 px-3 py-2 text-sm"
-      >
+      <Button type="button" variant="ghost" onClick={downloadCsv}>
         Download CSV
-      </button>
-      <button
-        type="button"
-        onClick={() => window.print()}
-        className="rounded-md bg-ink px-3 py-2 text-sm text-surface"
-      >
+      </Button>
+      <Button type="button" variant="secondary" onClick={() => window.print()}>
         Print / PDF
-      </button>
+      </Button>
     </div>
   );
 }

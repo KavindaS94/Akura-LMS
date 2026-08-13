@@ -3,6 +3,10 @@
 import { useEffect, useState, useTransition } from "react";
 import { saveMarksAction } from "@/capabilities/attendance/lib/actions";
 import type { AttendanceStatus } from "@/lib/db/schema";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Alert } from "@/components/ui/feedback";
+import { Badge } from "@/components/ui/badge";
 
 type RosterItem = {
   student: { id: string; fullName: string };
@@ -11,6 +15,12 @@ type RosterItem = {
 };
 
 const draftKey = (sessionId: string) => `akura.attendance.draft.${sessionId}`;
+
+const statusBadge: Record<AttendanceStatus, { label: string; tone: "success" | "danger" | "accent" }> = {
+  present: { label: "Present", tone: "success" },
+  absent: { label: "Absent", tone: "danger" },
+  late: { label: "Late", tone: "accent" },
+};
 
 export function AttendanceMarker({
   slug,
@@ -124,74 +134,78 @@ export function AttendanceMarker({
     });
   }
 
+  const countBy = Object.values(marks).reduce<Record<string, number>>(
+    (acc, m) => {
+      acc[m.status] = (acc[m.status] ?? 0) + 1;
+      return acc;
+    },
+    {},
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
         <p className="text-muted">
-          Everyone starts <strong>Present</strong>. Tap to cycle Absent → Late → Present.
+          Everyone starts <strong className="text-ink">Present</strong>. Tap to cycle Absent →
+          Late → Present.
         </p>
-        <p className={online ? "text-success" : "text-danger"}>
+        <Badge tone={online ? "success" : "danger"}>
           {online ? "Online" : "Offline — draft kept locally"}
-        </p>
+        </Badge>
       </div>
 
       {locked ? (
-        <p className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
+        <Alert tone="error" title={isAdmin ? "Session is locked" : "Session is locked"}>
           {isAdmin
-            ? "Session is locked. Provide a reason below to save edits."
-            : "Session is locked. Only an admin can edit with a reason."}
-        </p>
+            ? "Provide a reason below to save edits."
+            : "Only an admin can edit with a reason."}
+        </Alert>
       ) : null}
 
-      <ul className="divide-y divide-ink/10 border border-ink/10 bg-white">
+      <ul className="divide-y divide-ink/8 rounded-xl border border-ink/10 bg-white shadow-xs">
         {roster.map((row) => {
           const status = marks[row.student.id]?.status ?? "present";
-          const color =
-            status === "present"
-              ? "bg-success/15 text-success"
-              : status === "absent"
-                ? "bg-danger/15 text-danger"
-                : "bg-accent/15 text-accent";
           return (
             <li key={row.student.id}>
               <button
                 type="button"
                 onClick={() => cycle(row.student.id)}
-                className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left text-sm active:bg-surface"
+                className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-surface/60 active:bg-surface"
               >
-                <span className="font-medium">{row.student.fullName}</span>
-                <span className={`rounded px-2 py-1 text-xs font-semibold uppercase ${color}`}>
-                  {status}
-                </span>
+                <span className="font-medium text-ink">{row.student.fullName}</span>
+                <Badge tone={statusBadge[status].tone}>{statusBadge[status].label}</Badge>
               </button>
             </li>
           );
         })}
       </ul>
 
+      <div className="flex flex-wrap gap-2 text-xs text-muted">
+        {(["present", "absent", "late"] as const).map((s) => (
+          <span key={s}>
+            {statusBadge[s].label}: <strong className="text-ink">{countBy[s] ?? 0}</strong>
+          </span>
+        ))}
+      </div>
+
       {isAdmin ? (
         <label className="block text-sm">
-          <span className="text-muted">Edit reason (required if session locked)</span>
-          <input
+          <span className="font-medium text-ink">Edit reason</span>
+          <Input
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            className="mt-1 w-full rounded-md border border-ink/15 px-3 py-2"
-            placeholder="Correction reason"
+            className="mt-1.5"
+            placeholder="Required if the session is locked"
           />
         </label>
       ) : null}
 
-      {error ? <p className="text-sm text-danger">{error}</p> : null}
-      {message ? <p className="text-sm text-success">{message}</p> : null}
+      {error ? <Alert tone="error">{error}</Alert> : null}
+      {message ? <Alert tone="success">{message}</Alert> : null}
 
-      <button
-        type="button"
-        disabled={pending}
-        onClick={save}
-        className="w-full rounded-md bg-ink px-4 py-3 text-sm font-medium text-surface disabled:opacity-60"
-      >
+      <Button type="button" variant="secondary" disabled={pending} onClick={save} className="w-full py-3">
         {pending ? "Saving…" : "Save attendance"}
-      </button>
+      </Button>
     </div>
   );
 }

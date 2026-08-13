@@ -1,8 +1,16 @@
 import Link from "next/link";
 import { loadCoursesEditorHome } from "@/capabilities/courses/lib/actions";
 import { CreateCourseForm } from "@/components/course-editor";
+import { Card, EmptyState } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
+import { Badge } from "@/components/ui/badge";
 
 export const dynamic = "force-dynamic";
+
+const statusTone: Record<string, "neutral" | "success"> = {
+  draft: "neutral",
+  published: "success",
+};
 
 export default async function AdminCoursesPage({
   params,
@@ -14,44 +22,45 @@ export default async function AdminCoursesPage({
 
   return (
     <section className="space-y-8">
-      <div>
-        <h2
-          className="text-2xl font-semibold"
-          style={{ fontFamily: "var(--font-display), serif" }}
-        >
-          Courses
-        </h2>
-        <p className="mt-2 text-muted">
-          Build Course → Module → Resource content for a class.
-        </p>
+      <PageHeader
+        title="Courses"
+        subtitle="Build Course → Module → Resource content for a class."
+      />
+
+      <Card title="Create a course">
         <CreateCourseForm
           slug={slug}
           classes={classes.map((c) => ({ id: c.id, name: c.name }))}
           editorBase={`/i/${slug}/admin/courses`}
         />
-      </div>
-      <ul className="divide-y divide-ink/10 border border-ink/10 bg-white">
-        {courses.length === 0 ? (
-          <li className="px-3 py-3 text-sm text-muted">No courses yet.</li>
-        ) : (
-          courses.map(({ course, className }) => (
+      </Card>
+
+      {courses.length === 0 ? (
+        <EmptyState title="No courses yet" description="Create your first course above." />
+      ) : (
+        <ul className="space-y-3">
+          {courses.map(({ course, className }) => (
             <li
               key={course.id}
-              className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 text-sm"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 bg-white p-4 shadow-xs"
             >
-              <div>
-                <p className="font-medium">{course.title}</p>
-                <p className="text-xs text-muted">
-                  {className} · {course.status}
-                </p>
+              <div className="min-w-0">
+                <p className="font-semibold text-ink">{course.title}</p>
+                <p className="mt-0.5 text-sm text-muted">{className}</p>
               </div>
-              <Link href={`/i/${slug}/admin/courses/${course.id}`} className="text-accent">
-                Edit
-              </Link>
+              <div className="flex items-center gap-3">
+                <Badge tone={statusTone[course.status] ?? "neutral"}>{course.status}</Badge>
+                <Link
+                  href={`/i/${slug}/admin/courses/${course.id}`}
+                  className="text-sm font-medium text-accent hover:underline"
+                >
+                  Edit →
+                </Link>
+              </div>
             </li>
-          ))
-        )}
-      </ul>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

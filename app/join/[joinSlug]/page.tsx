@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { rowsOf } from "@/lib/db/result";
 import { PublicRegistrationForm } from "@/components/people-forms";
+import { AuthShell, AuthCardNotice } from "@/components/auth-shell";
 
 export const dynamic = "force-dynamic";
 
@@ -65,33 +66,24 @@ export default async function JoinPage({
     (link.expires_at && new Date(link.expires_at) < new Date()) ||
     (link.max_uses != null && link.use_count >= link.max_uses)
   ) {
-    return (
-      <main className="mx-auto max-w-md px-6 py-24 text-center">
-        <h1 className="text-2xl font-semibold">Not found</h1>
-      </main>
-    );
+    return <AuthCardNotice title="Not found" />;
   }
 
   const accent = link.accent_color ?? "#E4761B";
 
   return (
-    <main
-      className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12"
-      style={{ ["--accent" as string]: accent }}
-    >
-      <p className="text-xs tracking-[0.2em] text-muted uppercase">Akura</p>
-      <h1
-        className="mt-3 text-3xl font-semibold"
-        style={{ fontFamily: "var(--font-display), serif" }}
+    <div style={{ ["--accent" as string]: accent }}>
+      <AuthShell
+        eyebrow="Register with"
+        title={link.tenant_name}
+        subtitle={link.label}
       >
-        {link.tenant_name}
-      </h1>
-      <p className="mt-2 text-muted">{link.label}</p>
-      <PublicRegistrationForm
-        token={link.token}
-        collectGuardian={link.collect_guardian}
-        src={src}
-      />
-    </main>
+        <PublicRegistrationForm
+          token={link.token}
+          collectGuardian={link.collect_guardian}
+          src={src}
+        />
+      </AuthShell>
+    </div>
   );
 }
